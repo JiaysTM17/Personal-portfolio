@@ -1,23 +1,27 @@
 # Personal Portfolio
 
-A personal portfolio website to introduce myself, showcase my skills, and share my projects.
+A responsive personal portfolio website introducing my background, career direction, and future projects.
 
-## Goals
+## Live Demo
 
-- Present my background and career direction
-- Showcase practical projects
-- Provide an easy way to contact me
-- Practice building a responsive website
+[View the website](https://jiaystm17.github.io/Personal-portfolio/)
 
-## Planned tech stack
+## Features
+
+- Responsive portfolio layout
+- Introduction and career direction
+- Project showcase section
+- Contact link
+
+## Built with
 
 - HTML
 - CSS
-- JavaScript
 
-## Status
+## Run locally
 
-🚧 In progress — currently building the first version.
+1. Clone this repository.
+2. Open `index.html` in a browser.
 
 ## Author
 

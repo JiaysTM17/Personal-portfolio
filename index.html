@@ -11,6 +11,47 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 
+<!-- AI Assistant -->
+<div class="chatbot">
+    <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open AI Assistant">
+        💬
+    </button>
+
+    <div class="chatbot-window" id="chatbotWindow">
+        <div class="chatbot-header">
+            <div>
+                <strong>Kiệt Assistant</strong>
+                <span>AI Portfolio Assistant</span>
+            </div>
+
+            <button id="chatbotClose" aria-label="Close chat">
+                ×
+            </button>
+        </div>
+
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="chat-message assistant">
+                Xin chào 👋 Mình là Kiệt Assistant.
+                Bạn muốn tìm hiểu gì về Kiệt?
+            </div>
+        </div>
+
+        <form class="chatbot-input-area" id="chatbotForm">
+            <input
+                type="text"
+                id="chatbotInput"
+                placeholder="Hỏi về Kiệt..."
+                maxlength="500"
+                autocomplete="off"
+            />
+
+            <button type="submit">
+                Gửi
+            </button>
+        </form>
+    </div>
+</div>
+  
 <body>
   <header class="hero" id="home">
     <nav class="nav" aria-label="Primary navigation">

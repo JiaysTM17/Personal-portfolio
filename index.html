@@ -11,32 +11,164 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 
-<!-- AI Assistant -->
-<div class="chatbot">
-    <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open AI Assistant">
-        💬
+<!-- =========================================
+     KIỆT ASSISTANT
+========================================= -->
+
+<div class="chatbot" id="chatbot">
+
+    <!-- Floating button -->
+    <button
+        class="chatbot-toggle"
+        id="chatbotToggle"
+        type="button"
+        aria-label="Open Kiệt Assistant"
+        aria-expanded="false"
+    >
+        <span class="chatbot-icon chatbot-icon-open">✦</span>
+        <span class="chatbot-icon chatbot-icon-close">×</span>
     </button>
 
-    <div class="chatbot-window" id="chatbotWindow">
+    <!-- Chat window -->
+    <div
+        class="chatbot-window"
+        id="chatbotWindow"
+        aria-hidden="true"
+    >
+
+        <!-- Header -->
         <div class="chatbot-header">
-            <div>
-                <strong>Kiệt Assistant</strong>
-                <span>AI Portfolio Assistant</span>
+
+            <div class="chatbot-header-info">
+
+                <div class="chatbot-avatar">
+                    ✦
+                </div>
+
+                <div class="chatbot-title">
+                    <strong>Kiệt Assistant</strong>
+
+                    <span>
+                        <i></i>
+                        AI Portfolio Assistant
+                    </span>
+                </div>
+
             </div>
 
-            <button id="chatbotClose" aria-label="Close chat">
-                ×
-            </button>
-        </div>
+            <div class="chatbot-header-actions">
 
-        <div class="chatbot-messages" id="chatbotMessages">
-            <div class="chat-message assistant">
-                Xin chào 👋 Mình là Kiệt Assistant.
-                Bạn muốn tìm hiểu gì về Kiệt?
+                <!-- Language -->
+                <div class="chatbot-language">
+
+                    <button
+                        type="button"
+                        class="language-btn active"
+                        data-lang="vi"
+                    >
+                        VI
+                    </button>
+
+                    <button
+                        type="button"
+                        class="language-btn"
+                        data-lang="en"
+                    >
+                        EN
+                    </button>
+
+                </div>
+
             </div>
+
         </div>
 
-        <form class="chatbot-input-area" id="chatbotForm">
+
+        <!-- Messages -->
+        <div
+            class="chatbot-messages"
+            id="chatbotMessages"
+        >
+
+            <!-- Welcome message -->
+            <div class="chat-message assistant welcome-message">
+
+                <div class="message-avatar">
+                    ✦
+                </div>
+
+                <div class="message-content">
+
+                    <div class="message-bubble">
+                        <p id="welcomeText">
+                            Chào bạn 👋 Mình là Kiệt Assistant.
+                            Mình có thể giúp bạn tìm hiểu về Kiệt,
+                            quá trình học tập và các dự án công khai trên GitHub.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Suggested questions -->
+            <div
+                class="chatbot-suggestions"
+                id="chatbotSuggestions"
+            >
+
+                <p id="suggestionTitle">
+                    Bạn có thể hỏi:
+                </p>
+
+                <button
+                    type="button"
+                    class="suggestion-btn"
+                    data-question-vi="Kiệt đang học ngành gì?"
+                    data-question-en="What is Kiệt studying?"
+                >
+                    Kiệt đang học ngành gì?
+                </button>
+
+                <button
+                    type="button"
+                    class="suggestion-btn"
+                    data-question-vi="Kiệt có những dự án nào?"
+                    data-question-en="What projects has Kiệt built?"
+                >
+                    Kiệt có những dự án nào?
+                </button>
+
+                <button
+                    type="button"
+                    class="suggestion-btn"
+                    data-question-vi="Project nào được cập nhật gần đây nhất?"
+                    data-question-en="Which project was updated most recently?"
+                >
+                    Project nào được cập nhật gần đây nhất?
+                </button>
+
+                <button
+                    type="button"
+                    class="suggestion-btn"
+                    data-question-vi="Mục tiêu nghề nghiệp của Kiệt là gì?"
+                    data-question-en="What is Kiệt's career goal?"
+                >
+                    Mục tiêu nghề nghiệp của Kiệt là gì?
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- Input -->
+        <form
+            class="chatbot-input-area"
+            id="chatbotForm"
+        >
+
             <input
                 type="text"
                 id="chatbotInput"
@@ -45,11 +177,26 @@
                 autocomplete="off"
             />
 
-            <button type="submit">
-                Gửi
+            <button
+                type="submit"
+                id="chatbotSend"
+                aria-label="Send message"
+            >
+                <span>➤</span>
             </button>
+
         </form>
+
+
+        <!-- Footer -->
+        <div class="chatbot-footer">
+            <span id="footerText">
+                Powered by Gemini · Public GitHub data
+            </span>
+        </div>
+
     </div>
+
 </div>
   
 <body>

@@ -241,68 +241,94 @@ languageButtons.forEach(
 
 function appendTextWithLinks(container, text) {
 
-    /*
-     * Xử lý Markdown link:
-     * [text](https://...)
-     *
-     * Ví dụ:
-     * [🔗 Mở project](https://github.com/JiaysTM17/task-manager)
-     */
+    // Chuẩn hóa các ký tự escape Markdown
+    text = text
+        .replace(/\\\*/g, "*")
+        .replace(/\\_/g, "_")
+        .replace(/\\\[/g, "[")
+        .replace(/\\\]/g, "]")
+        .replace(/\\\(/g, "(")
+        .replace(/\\\)/g, ")");
 
-    const markdownLinkRegex =
-        /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+
+    /*
+     * Tìm URL GitHub.
+     *
+     * URL chỉ kết thúc ở khoảng trắng hoặc
+     * một số ký tự Markdown / dấu câu.
+     */
+    const urlRegex =
+        /https?:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/g;
+
 
     let lastIndex = 0;
     let match;
 
+
     while (
-        (match = markdownLinkRegex.exec(text)) !== null
+        (match = urlRegex.exec(text)) !== null
     ) {
 
-        // Phần text trước link
+        /*
+         * Phần text trước URL
+         */
         const before =
             text.slice(
                 lastIndex,
                 match.index
             );
 
-        appendPlainText(
+        appendFormattedText(
             container,
             before
         );
 
 
-        // Tạo link
+        /*
+         * URL sạch
+         */
+        const url =
+            match[0];
+
+
+        /*
+         * Tạo link
+         */
         const link =
             document.createElement("a");
 
-        link.href =
-            match[2];
+        link.href = url;
 
-        link.target =
-            "_blank";
+        link.target = "_blank";
 
         link.rel =
             "noopener noreferrer";
 
         link.textContent =
-            match[1];
+            "🔗 Mở project";
 
         link.title =
-            match[2];
+            url;
 
-        container.appendChild(
-            link
-        );
+        link.className =
+            "chat-project-link";
 
 
+        container.appendChild(link);
+
+
+        /*
+         * Bỏ qua phần URL đã xử lý
+         */
         lastIndex =
-            markdownLinkRegex.lastIndex;
+            urlRegex.lastIndex;
     }
 
 
-    // Phần text còn lại
-    appendPlainText(
+    /*
+     * Phần text còn lại
+     */
+    appendFormattedText(
         container,
         text.slice(lastIndex)
     );
@@ -310,96 +336,93 @@ function appendTextWithLinks(container, text) {
 
 
 /*
- * Hiển thị text thường,
- * đồng thời xử lý URL thuần.
+ * Hiển thị text thường.
+ *
+ * Đồng thời làm sạch Markdown dư thừa
+ * mà Gemini đôi khi sinh ra.
  */
-function appendPlainText(
+function appendFormattedText(
     container,
     text
 ) {
 
-    const urlRegex =
-        /(https?:\/\/[^\s<]+)/g;
+    /*
+     * Xử lý xuống dòng
+     */
+    const lines =
+        text.split("\n");
 
-    const parts =
-        text.split(urlRegex);
 
+    lines.forEach(
+        (line, index) => {
 
-    parts.forEach(
-        (part) => {
-
-            if (
-                part.startsWith("http://") ||
-                part.startsWith("https://")
-            ) {
-
-                let url =
-                    part;
-
-                /*
-                 * Loại bỏ dấu câu
-                 * nằm cuối URL.
-                 */
-                url =
-                    url.replace(
-                        /[.,!?;:)]+$/,
+            /*
+             * Loại bỏ các ký tự Markdown
+             * bị dư quanh link.
+             *
+             * Không ảnh hưởng đến URL vì
+             * URL đã được xử lý riêng.
+             */
+            line =
+                line
+                    .replace(
+                        /\[\*\*🔗 Mở project\*\*\]/g,
+                        ""
+                    )
+                    .replace(
+                        /\[\*\*/g,
+                        ""
+                    )
+                    .replace(
+                        /\*\*\]/g,
+                        ""
+                    )
+                    .replace(
+                        /\]\(/g,
                         ""
                     );
 
 
-                const link =
-                    document.createElement("a");
-
-                link.href =
-                    url;
-
-                link.target =
-                    "_blank";
-
-                link.rel =
-                    "noopener noreferrer";
-
-                link.textContent =
-                    "🔗 Mở project";
-
-                link.title =
-                    url;
-
-                container.appendChild(
-                    link
+            /*
+             * Chuyển **text** thành text
+             * bình thường.
+             */
+            line =
+                line.replace(
+                    /\*\*(.*?)\*\*/g,
+                    "$1"
                 );
 
-            } else {
 
-                /*
-                 * Giữ xuống dòng.
-                 */
-                const lines =
-                    part.split("\n");
-
-
-                lines.forEach(
-                    (line, index) => {
-
-                        container.appendChild(
-                            document.createTextNode(
-                                line
-                            )
-                        );
+            /*
+             * Xóa Markdown link còn sót lại
+             */
+            line =
+                line.replace(
+                    /\[([^\]]+)\]\(/g,
+                    "$1"
+                );
 
 
-                        if (
-                            index <
-                            lines.length - 1
-                        ) {
+            line =
+                line.replace(
+                    /\)\*\*/g,
+                    ""
+                );
 
-                            container.appendChild(
-                                document.createElement("br")
-                            );
 
-                        }
+            container.appendChild(
+                document.createTextNode(line)
+            );
 
-                    }
+
+            if (
+                index <
+                lines.length - 1
+            ) {
+
+                container.appendChild(
+                    document.createElement("br")
                 );
 
             }

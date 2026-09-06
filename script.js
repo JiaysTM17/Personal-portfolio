@@ -239,21 +239,91 @@ languageButtons.forEach(
    SAFE TEXT + LINKS
 ========================================= */
 
-function appendTextWithLinks(
+function appendTextWithLinks(container, text) {
+
+    /*
+     * Xử lý Markdown link:
+     * [text](https://...)
+     *
+     * Ví dụ:
+     * [🔗 Mở project](https://github.com/JiaysTM17/task-manager)
+     */
+
+    const markdownLinkRegex =
+        /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+
+    let lastIndex = 0;
+    let match;
+
+    while (
+        (match = markdownLinkRegex.exec(text)) !== null
+    ) {
+
+        // Phần text trước link
+        const before =
+            text.slice(
+                lastIndex,
+                match.index
+            );
+
+        appendPlainText(
+            container,
+            before
+        );
+
+
+        // Tạo link
+        const link =
+            document.createElement("a");
+
+        link.href =
+            match[2];
+
+        link.target =
+            "_blank";
+
+        link.rel =
+            "noopener noreferrer";
+
+        link.textContent =
+            match[1];
+
+        link.title =
+            match[2];
+
+        container.appendChild(
+            link
+        );
+
+
+        lastIndex =
+            markdownLinkRegex.lastIndex;
+    }
+
+
+    // Phần text còn lại
+    appendPlainText(
+        container,
+        text.slice(lastIndex)
+    );
+}
+
+
+/*
+ * Hiển thị text thường,
+ * đồng thời xử lý URL thuần.
+ */
+function appendPlainText(
     container,
     text
 ) {
-
-    /*
-     * Chỉ nhận diện URL.
-     * Không cho AI chèn HTML trực tiếp.
-     */
 
     const urlRegex =
         /(https?:\/\/[^\s<]+)/g;
 
     const parts =
         text.split(urlRegex);
+
 
     parts.forEach(
         (part) => {
@@ -263,33 +333,28 @@ function appendTextWithLinks(
                 part.startsWith("https://")
             ) {
 
+                let url =
+                    part;
+
                 /*
-                 * Loại bỏ dấu câu nằm cuối URL
+                 * Loại bỏ dấu câu
+                 * nằm cuối URL.
                  */
-                let url = part;
-
-                let trailing =
-                    "";
-
-                while (
-                    /[.,!?;:)\]}]$/.test(url)
-                ) {
-
-                    trailing =
-                        url.slice(-1) +
-                        trailing;
-
-                    url =
-                        url.slice(0, -1);
-                }
+                url =
+                    url.replace(
+                        /[.,!?;:)]+$/,
+                        ""
+                    );
 
 
                 const link =
                     document.createElement("a");
 
-                link.href = url;
+                link.href =
+                    url;
 
-                link.target = "_blank";
+                link.target =
+                    "_blank";
 
                 link.rel =
                     "noopener noreferrer";
@@ -304,24 +369,14 @@ function appendTextWithLinks(
                     link
                 );
 
-
-                if (trailing) {
-
-                    container.appendChild(
-                        document.createTextNode(
-                            trailing
-                        )
-                    );
-
-                }
-
             } else {
 
                 /*
-                 * Giữ xuống dòng
+                 * Giữ xuống dòng.
                  */
                 const lines =
                     part.split("\n");
+
 
                 lines.forEach(
                     (line, index) => {
@@ -331,6 +386,7 @@ function appendTextWithLinks(
                                 line
                             )
                         );
+
 
                         if (
                             index <
@@ -351,7 +407,6 @@ function appendTextWithLinks(
         }
     );
 }
-
 
 /* =========================================
    ADD MESSAGE

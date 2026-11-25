@@ -1,15 +1,19 @@
-// Swarm Rebuild — 4 Parallel Work Tracks
-// Each track has its own red guide lines + bbox + agent group.
-// Agents without a track are hidden. No cursor ever idles visibly.
+// Swarm Rebuild — 4 Parallel Work Tracks (c1705b1 + surgical fixes)
+// Patches:
+//  P1: Zero-jitter physics — no getBCR in RAF (use stable a.tx/a.ty)
+//  P2: Full-viewport spread — agents target anywhere on screen, not inside element bbox
+//  P3: Section-based layer split — tracks work at different Y positions
+//  P4: 300-350 layers, dynamic 14-18 agents
 
 (function () {
   'use strict';
 
   // ─── Constants ───────────────────────────────────────────────────────────
-  const NUM_TRACKS    = 4;   // parallel work tracks (each has its own red guide)
+  const NUM_TRACKS    = 4;
+  const MIN_AGENTS    = 14;
+  const MAX_AGENTS    = 18;
   const AGENTS_TOTAL  = 18;
-  const AGENTS_TRACK  = 3;   // agents per track (3×4=12 active, rest hidden)
-  const INTRO_DUR     = 1700; // ms blank-canvas thinking intro
+  const INTRO_DUR     = 1700;
 
   const AGENT_COLORS = [
     '#3b82f6','#8b5cf6','#ec4899','#f59e0b',
@@ -113,8 +117,78 @@
     { sel: '[class*="card"] p',                                   label: 'CardPara',         type: 'text' },
     { sel: '[class*="badge"]',                                    label: 'BadgeEl',          type: 'box' },
     { sel: '[class*="tag"]',                                      label: 'TagEl',            type: 'box' },
-    { sel: '[class*="btn"]',                                      label: 'BtnEl',            type: 'box' },
+    { sel: '[class*="btn"]:not(#agent-replay-dock *)',             label: 'BtnEl',            type: 'box' },
     { sel: '[class*="grid"] > *',                                 label: 'GridCell',         type: 'box' },
+    // ── Extended sweeps → 300-350 layers ─────────────────────────────────
+    { sel: '#projects-grid .project-card h4',                     label: 'CardSubtitle',     type: 'text' },
+    { sel: '#projects-grid .project-card [class*="badge"]',       label: 'CardBadge',        type: 'box' },
+    { sel: '#projects-grid .project-card header',                 label: 'CardHeader',       type: 'box' },
+    { sel: '#projects-grid .project-card button',                 label: 'CardBtn',          type: 'box' },
+    { sel: '#projects-grid .project-card span',                   label: 'CardSpan',         type: 'text' },
+    { sel: '#services h3',                                        label: 'ServicesH3',       type: 'text' },
+    { sel: '#services span',                                      label: 'ServicesSpan',     type: 'text' },
+    { sel: '#services li',                                        label: 'ServicesLi',       type: 'box' },
+    { sel: '#services [class*="tag"]',                            label: 'SkillTag',         type: 'box' },
+    { sel: '#services > *',                                       label: 'ServicesRow',      type: 'box' },
+    { sel: '#services p',                                         label: 'ServicesPara',     type: 'text' },
+    { sel: '#docs [class*="card"]',                               label: 'DocCard',          type: 'box' },
+    { sel: '#docs p',                                             label: 'DocsParaGen',      type: 'text' },
+    { sel: '#docs span',                                          label: 'DocsSpan',         type: 'text' },
+    { sel: '#docs a',                                             label: 'DocsLink',         type: 'box' },
+    { sel: '#docs img',                                           label: 'DocsImg',          type: 'box' },
+    { sel: '#docs button',                                        label: 'DocsBtn',          type: 'box' },
+    { sel: '#about h4',                                           label: 'AboutH4',          type: 'text' },
+    { sel: '#about [class*="card"]',                              label: 'AboutCard',        type: 'box' },
+    { sel: '#about img',                                          label: 'AboutImg',         type: 'box' },
+    { sel: '#about a',                                            label: 'AboutLink',        type: 'box' },
+    { sel: '#about span',                                         label: 'AboutSpan',        type: 'text' },
+    { sel: '#about [class*="badge"]',                             label: 'AboutBadge',       type: 'box' },
+    { sel: '#about [class*="tag"]',                               label: 'AboutTag',         type: 'box' },
+    { sel: '#journey .space-y-6 > div h4',                        label: 'TimelineH4',       type: 'text' },
+    { sel: '#journey .space-y-6 > div [class*="tag"]',            label: 'TimelineTag',      type: 'box' },
+    { sel: '#journey .space-y-6 > div span',                      label: 'TimelineSpan',     type: 'text' },
+    { sel: '#journey [class*="line"]',                            label: 'TimelineLine',     type: 'box' },
+    { sel: '#journey [class*="dot"]',                             label: 'TimelineDot',      type: 'box' },
+    { sel: '#journey p',                                          label: 'JourneyPara',      type: 'text' },
+    { sel: '#journey span',                                       label: 'JourneySpan',      type: 'text' },
+    { sel: '#contact h3',                                         label: 'ContactH3',        type: 'text' },
+    { sel: '#contact [class*="social"]',                          label: 'SocialLink',       type: 'box' },
+    { sel: '#contact [class*="card"]',                            label: 'ContactCard',      type: 'box' },
+    { sel: '#contact span',                                       label: 'ContactSpan',      type: 'text' },
+    { sel: '#contact a',                                          label: 'ContactLink',      type: 'box' },
+    { sel: 'footer span',                                         label: 'FooterSpan',       type: 'text' },
+    { sel: 'footer [class*="social"]',                            label: 'FooterSocial',     type: 'box' },
+    { sel: 'main > section > div > h3',                           label: 'SectionDivH3',     type: 'text' },
+    { sel: 'main > section > div > p',                            label: 'SectionDivPara',   type: 'text' },
+    { sel: '[class*="card"] > div',                               label: 'CardDiv',          type: 'box' },
+    { sel: '[class*="card"] span',                                label: 'CardSpanG',        type: 'text' },
+    { sel: '[class*="pill"]',                                     label: 'PillEl',           type: 'box' },
+    { sel: '[class*="separator"]',                                label: 'Separator',        type: 'box' },
+    { sel: '[class*="flex"] > a',                                 label: 'FlexLink',         type: 'box' },
+    { sel: '[class*="rounded"] > span',                           label: 'RoundedSpan',      type: 'text' },
+    { sel: 'main [class*="border"]',                              label: 'BorderEl',         type: 'box' },
+    { sel: 'main [class*="shadow"]',                              label: 'ShadowEl',         type: 'box' },
+    { sel: 'main [class*="ring"]',                                label: 'RingEl',           type: 'box' },
+    { sel: 'main [class*="icon"]',                                label: 'IconEl',           type: 'box' },
+    { sel: 'main ul > li',                                        label: 'ListItem',         type: 'box' },
+    { sel: 'main ol > li',                                        label: 'OlItem',           type: 'box' },
+    { sel: 'main figure',                                         label: 'Figure',           type: 'box' },
+    { sel: 'main strong',                                         label: 'StrongEl',         type: 'text' },
+    { sel: 'main code',                                           label: 'CodeEl',           type: 'text' },
+    { sel: 'main details',                                        label: 'DetailsEl',        type: 'box' },
+    { sel: 'main summary',                                        label: 'SummaryEl',        type: 'text' },
+    { sel: 'main [data-aos]',                                     label: 'AosEl',            type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] span',                     label: 'BentoSpan',        type: 'text' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] h3',                       label: 'BentoH3',          type: 'text' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] li',                       label: 'BentoLi',          type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] a',                        label: 'BentoLink',        type: 'box' },
+    { sel: '#hero h1 span',                                       label: 'HeroTitleSpan',    type: 'text' },
+    { sel: '#hero [class*="stat"]',                               label: 'StatItem',         type: 'box' },
+    { sel: '#hero [class*="number"]',                             label: 'StatNumber',       type: 'text' },
+    { sel: '#hero [class*="label"]',                              label: 'StatLabel',        type: 'text' },
+    { sel: 'header button',                                       label: 'HeaderBtn2',       type: 'box' },
+    { sel: '#works > *',                                          label: 'WorksRow',         type: 'box' },
+    { sel: '#works p',                                            label: 'WorksPara',        type: 'text' },
   ];
 
   // ─── Global State ─────────────────────────────────────────────────────────
@@ -331,8 +405,8 @@
       actionBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
       actionBtn.classList.add('bg-brand-600', 'hover:bg-brand-500');
       statusText.textContent = completed
-        ? `${NUM_TRACKS * AGENTS_TRACK} agents • ${total}/${total} layers`
-        : `${NUM_TRACKS * AGENTS_TRACK} agents • Live`;
+        ? `${total} layers • done`
+        : `${MIN_AGENTS} agents • Live`;
       document.documentElement.style.scrollBehavior = '';
     }
 
@@ -359,11 +433,18 @@
       typeTick();
     }
 
-    // ── 60fps physics loop ─────────────────────────────────────────────────
-    // Each agent tracks its assigned track's currentEl.
-    // If track.currentEl is null → agent is hidden.
-    // On arrival at target → pick NEW position within same rect (keep moving).
+    // ── 60fps physics loop — ZERO getBoundingClientRect() ─────────────────
+    // Agents use stable a.tx / a.ty computed ONCE at build time (assignToTrack).
+    // On arrival → pick new random target spread across FULL viewport.
     let lastPhysicsTime = 0;
+
+    // Pick a new target anywhere on viewport (makes agents roam freely)
+    function pickNextTarget(a) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      a.tx = 20 + Math.random() * (vw - 110);
+      a.ty = 20 + Math.random() * (vh - 70);
+    }
 
     function physicsLoop(now) {
       if (!isReplaying) return;
@@ -376,74 +457,73 @@
       const vh = window.innerHeight;
 
       agents.forEach(a => {
-        const tIdx = a.trackIdx;
-        if (tIdx < 0) {
-          a.cur.style.opacity = '0';
-          return;
-        }
-        const tr = tracks[tIdx];
-        if (!tr.currentEl) {
+        if (a.trackIdx < 0) {
           a.cur.style.opacity = '0';
           return;
         }
 
-        // Live rect (stays in sync with Touring scroll)
-        const rect = tr.currentEl.getBoundingClientRect();
-
-        // Target = stable per-agent offset within the rect
-        const off = tr.offsets[a.agentSlot] || { ox: 0.5, oy: 0.5 };
-        const rawTx = rect.left + off.ox * Math.max(rect.width,  10);
-        const rawTy = rect.top  + off.oy * Math.max(rect.height, 10);
-        const tx = Math.max(10, Math.min(vw - 90, rawTx));
-        const ty = Math.max(10, Math.min(vh - 60, rawTy));
-
-        const dx   = tx - a.x;
-        const dy   = ty - a.y;
+        // Use stable a.tx / a.ty — no getBoundingClientRect() here
+        const dx   = a.tx - a.x;
+        const dy   = a.ty - a.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < 5) {
-          // Arrived — pick a new random spot within the same rect so cursor keeps moving
-          a.x = tx; a.y = ty;
-          tr.offsets[a.agentSlot] = {
-            ox: 0.05 + Math.random() * 0.90,
-            oy: 0.05 + Math.random() * 0.90,
-          };
+        if (dist < 6) {
+          // Arrived — wander to next random spot across full viewport
+          a.x = a.tx; a.y = a.ty;
+          pickNextTarget(a);
         } else {
-          // Fast approach → smooth brake
-          const pxPerSec = dist > 80
-            ? Math.max(1100, dist * 8.5)
-            : Math.max(260,  dist * 6.5);
-          const step = Math.min(dist, pxPerSec * dt);
+          // Fast far away, ease-out in final 80px → smooth arrival, no jitter
+          const spd = dist > 80
+            ? Math.max(1000, dist * 8)
+            : Math.max(220, dist * 5.5);
+          const step = Math.min(dist, spd * dt);
           a.x += (dx / dist) * step;
           a.y += (dy / dist) * step;
         }
+
+        a.x = Math.max(10, Math.min(vw - 90, a.x));
+        a.y = Math.max(10, Math.min(vh - 60, a.y));
 
         a.cur.style.transform = `translate3d(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px,0)`;
         a.cur.style.opacity   = '1';
       });
     }
 
-    // ── Update a track's guide lines + bbox to a new element ──────────────
+    // ── Update a track's bbox to a new element ────────────────────────────
     function updateTrackOverlay(tr, rect, label) {
       if (rect.width <= 0 || rect.height <= 0) return;
-      tr.bbox.style.cssText += `
-        opacity:1;left:${rect.left}px;top:${rect.top}px;
-        width:${rect.width}px;height:${rect.height}px;
-      `;
+      tr.bbox.style.opacity = '1';
+      tr.bbox.style.left    = `${rect.left}px`;
+      tr.bbox.style.top     = `${rect.top}px`;
+      tr.bbox.style.width   = `${rect.width}px`;
+      tr.bbox.style.height  = `${rect.height}px`;
       tr.bboxTag.textContent = label;
       tr.bboxDim.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
-      tr.guideH.style.cssText += `opacity:1;top:${rect.top}px;`;
-      tr.guideV.style.cssText += `opacity:1;left:${rect.left}px;`;
     }
 
-    // ── Assign an element to a track (randomize stable agent offsets) ──────
-    function assignToTrack(tr, item) {
+    // ── Assign an element to a track — set stable a.tx/a.ty for each agent ─
+    // Agents get targets spread across the FULL viewport so they look scattered.
+    // Target = element center biased toward agent's natural screen column.
+    function assignToTrack(tr, item, rect) {
       tr.currentEl = item.el;
-      tr.offsets = Array.from({ length: AGENTS_TRACK }, (_, slot) => ({
-        // Spread agents horizontally across the element
-        ox: (slot + 0.5 + (Math.random() - 0.5) * 0.6) / AGENTS_TRACK,
-        oy: 0.1 + Math.random() * 0.8,
-      }));
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const ex = rect.left + rect.width  / 2;
+      const ey = rect.top  + rect.height / 2;
+
+      tr.agentIndices.forEach((aIdx, slot) => {
+        const a = agents[aIdx];
+        // Each agent slot gets its own column band across the full viewport
+        const colFrac = (slot + 0.5 + (Math.random() - 0.5) * 0.6) / Math.max(tr.agentIndices.length, 1);
+        // Mix element position (40%) with free viewport spread (60%)
+        const tx = ex * 0.4 + (colFrac * vw) * 0.6 + (Math.random() - 0.5) * vw * 0.18;
+        const ty = ey * 0.4 + (Math.random() * vh)  * 0.6 + (Math.random() - 0.5) * vh * 0.15;
+        a.tx = Math.max(20, Math.min(vw - 100, tx));
+        a.ty = Math.max(20, Math.min(vh - 70,  ty));
+      });
+
+      // Per-track offsets kept for compat (unused by new physicsLoop)
+      tr.offsets = tr.agentIndices.map(() => ({ ox: 0.5, oy: 0.5 }));
     }
 
     // ── Touring scroll ─────────────────────────────────────────────────────
@@ -591,51 +671,78 @@
       actionBtn.textContent = 'Go Live';
       actionBtn.classList.remove('bg-brand-600', 'hover:bg-brand-500');
       actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-      statusText.textContent = `${NUM_TRACKS * AGENTS_TRACK} agents • 0/${total}`;
+      statusText.textContent = `${MIN_AGENTS} agents • 0/${total}`;
 
-      // Assign agents to tracks — set trackIdx BEFORE intro so runIntro doesn't overwrite
-      tracks.forEach((tr, t) => {
-        tr.agentIndices = [];
-        tr.currentEl = null;
-        hideTrack(tr);
-        for (let s = 0; s < AGENTS_TRACK; s++) {
-          const aIdx = t * AGENTS_TRACK + s;
-          if (aIdx < AGENTS_TOTAL) {
-            agents[aIdx].trackIdx  = t;
-            agents[aIdx].agentSlot = s;
-            tr.agentIndices.push(aIdx);
+      // ── Dynamic agent activation (14-18, varies every 35 layers) ─────────
+      let liveCount = MIN_AGENTS;
+
+      function getLiveCount() {
+        return MIN_AGENTS + (Math.floor(builtCount / 35) % (MAX_AGENTS - MIN_AGENTS + 1));
+      }
+
+      // Distribute `count` agents across NUM_TRACKS (balanced)
+      function activateAgents(count) {
+        const perTrack = Math.ceil(count / NUM_TRACKS);
+        tracks.forEach(tr => { tr.agentIndices = []; tr.currentEl = null; hideTrack(tr); });
+        let assigned = 0;
+        for (let t = 0; t < NUM_TRACKS && assigned < count; t++) {
+          for (let s = 0; s < perTrack && assigned < count; s++) {
+            const aIdx = t * perTrack + s;
+            if (aIdx < AGENTS_TOTAL) {
+              agents[aIdx].trackIdx  = t;
+              agents[aIdx].agentSlot = s;
+              tracks[t].agentIndices.push(aIdx);
+              assigned++;
+            }
           }
         }
-      });
-      // Extra agents: trackIdx = -1, hidden immediately and permanently
-      for (let i = NUM_TRACKS * AGENTS_TRACK; i < AGENTS_TOTAL; i++) {
-        agents[i].trackIdx = -1;
-        agents[i].cur.style.opacity = '0';
+        // Hide unused agents
+        for (let i = count; i < AGENTS_TOTAL; i++) {
+          agents[i].trackIdx = -1;
+          agents[i].cur.style.opacity = '0';
+        }
+        // Seed free-roam start targets for active agents that have none
+        const vw = window.innerWidth; const vh = window.innerHeight;
+        for (let i = 0; i < count; i++) {
+          if (agents[i].tx === 0 && agents[i].ty === 0) {
+            agents[i].tx = 20 + Math.random() * (vw - 110);
+            agents[i].ty = 20 + Math.random() * (vh - 70);
+          }
+        }
       }
+
+      activateAgents(liveCount);
 
       // ── physicsLoop starts AFTER intro to avoid racing with introFrame ──
       // Run 1.7s intro ribbons first
       runIntro(() => {
         if (!isReplaying) return;
 
-        // Ensure extra agents are hidden (intro showed all of them)
-        for (let i = NUM_TRACKS * AGENTS_TRACK; i < AGENTS_TOTAL; i++) {
+        // Ensure extra agents hidden after intro
+        for (let i = liveCount; i < AGENTS_TOTAL; i++) {
           agents[i].cur.style.opacity = '0';
         }
 
-        // Now start physics loop
+        // Start physics loop
         lastPhysicsTime = performance.now();
         rafId = requestAnimationFrame(physicsLoop);
 
-        // Split layers across NUM_TRACKS round-robin
-        const trackLayers = tracks.map(() => []);
-        layers.forEach((item, i) => trackLayers[i % NUM_TRACKS].push(item));
+        // ── Section-based layer split (NOT round-robin) ───────────────────
+        // Track 0 = top 25% of layers (header/hero)
+        // Track 1 = 25-50% (bento/works)
+        // Track 2 = 50-75% (services/about)
+        // Track 3 = bottom 25% (journey/contact/footer)
+        // → 4 groups of agents work at DIFFERENT Y positions → full spread
+        const chunkSize = Math.ceil(total / NUM_TRACKS);
+        const trackLayers = tracks.map((_, t) =>
+          layers.slice(t * chunkSize, (t + 1) * chunkSize)
+        );
 
-        const baseInterval = 280; // ms per layer at 1x — readable pace
+        const baseInterval = 280;
 
         tracks.forEach((tr, t) => {
-          // Stagger tracks slightly so bboxes don't all flash simultaneously
-          const startOffset = t * Math.round(40 / speedMultiplier);
+          if (trackLayers[t].length === 0) return;
+          const startOffset = t * Math.round(50 / speedMultiplier);
           let delay = startOffset;
 
           trackLayers[t].forEach(item => {
@@ -649,16 +756,16 @@
               playWireframeSound();
             }, Math.max(0, delay - Math.round(90 / speedMultiplier))));
 
-            // Phase B: build — assign track to this element
+            // Phase B: build
             replayTimers.push(setTimeout(() => {
               if (!isReplaying) return;
 
               const rect = item.el.getBoundingClientRect();
 
-              // Touring — driven by track 0 (frontrunner)
-              if (touringEnabled && t === 0) touringFollow(rect);
+              // Touring — driven by track 1 (middle section = best view)
+              if (touringEnabled && t === 1) touringFollow(rect);
 
-              assignToTrack(tr, item);
+              assignToTrack(tr, item, rect);
               updateTrackOverlay(tr, rect, item.label);
 
               item.el.classList.remove('swarm-wireframe-layer');
@@ -668,7 +775,11 @@
               else playSnapSound();
 
               builtCount++;
-              statusText.textContent = `${NUM_TRACKS * AGENTS_TRACK} agents • ${builtCount}/${total}`;
+
+              // Dynamic 14-18: recalculate every 35 layers
+              const newLive = getLiveCount();
+              if (newLive !== liveCount) { liveCount = newLive; activateAgents(liveCount); }
+              statusText.textContent = `${liveCount} agents • ${builtCount}/${total}`;
 
               if (builtCount >= total) {
                 replayTimers.push(setTimeout(() => stopReplay(true, total),

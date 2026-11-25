@@ -379,8 +379,9 @@
     }
 
     // ── 60fps cursor physics loop ─────────────────────────────────────────
-    // Each agent moves fast when far from its stable target, brakes close.
-    // Idle agents (active=false) are hidden instantly — no lingering.
+    // All agents ALWAYS move — no agent ever stands still.
+    // When an agent reaches its target it immediately picks a new random target
+    // anywhere in the viewport so it keeps drifting continuously.
     let lastPhysicsTime = 0;
     function physicsLoop(now) {
       if (!isReplaying) return;
@@ -398,6 +399,7 @@
           a.cur.style.opacity = '0';
           return;
         }
+
         // Clamp target inside viewport
         const tx = Math.max(10, Math.min(vw - 90, a.tx));
         const ty = Math.max(10, Math.min(vh - 60, a.ty));
@@ -406,12 +408,14 @@
         const dy = ty - a.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < 1.2) {
-          // Arrived — micro-jitter suppressed by simply not moving
+        if (dist < 6) {
+          // Reached target — instantly pick a new random target so cursor keeps moving
           a.x = tx; a.y = ty;
+          a.tx = 20 + Math.random() * (vw - 110);
+          a.ty = 20 + Math.random() * (vh - 70);
         } else {
           // Fast approach → smooth brake
-          const pxPerSec = dist > 80
+          const pxPerSec = dist > 90
             ? Math.max(1100, dist * 8.5)
             : Math.max(260, dist * 6.5);
           const step = Math.min(dist, pxPerSec * dt);
@@ -424,55 +428,48 @@
       });
     }
 
-    // ── Pre-assign layers to agents (round-robin) ─────────────────────────
-    // Called once after layers are collected. Each agent gets a fixed list of
-    // layers to work on. When a layer fires, only ITS assigned agent updates
-    // its target — all others keep their current stable target → no jitter.
-    let agentLayerMap = []; // agentLayerMap[layerIdx] = agentIndex
-
-    function preAssignLayers(total, liveCount) {
-      agentLayerMap = [];
-      for (let i = 0; i < total; i++) {
-        agentLayerMap[i] = i % liveCount;
-      }
-    }
-
-    // Called when layer[idx] is built: move the responsible agent to that rect.
-    function onLayerBuilt(idx, rect, liveCount) {
-      const agentIdx = agentLayerMap[idx];
-      const a = agents[agentIdx];
-      if (!a) return;
-
-      // Update only THIS agent's target — others are untouched (no jitter)
-      if (rect.width > 0 && rect.height > 0) {
-        // Land inside the element rect with a small random offset within it
-        a.tx = rect.left + 8 + Math.random() * Math.max(0, rect.width  - 20);
-        a.ty = rect.top  + 4 + Math.random() * Math.max(0, rect.height - 12);
-      }
-      a.active = true;
-    }
-
-    // Activate agents 0…liveCount-1, hide the rest.
-    // Spawn all near center so they fan out smoothly.
-    function activateAgents(liveCount) {
+    // ── Assign task targets spread across the viewport ────────────────────
+    // ALL agents always have a target — no agent is ever hidden or idle.
+    // "Live" agents hover near the active layer rect; others get zone targets.
+    function assignAgentTargets(layerRect, agentCount, layerIdx, totalLayers) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
+
+      // Vary live count 14–18 based on layer index
+      const seed = layerIdx + totalLayers;
+      const liveCount = MIN_AGENTS + (seed % (MAX_AGENTS - MIN_AGENTS + 1));
+      statusText.textContent = `${liveCount} agents • ${layerIdx + 1}/${totalLayers}`;
+
+      // Zone grid: divide viewport so agents spread top-to-bottom, left-to-right
+      const cols = 4;
+      const rows = Math.ceil(MAX_AGENTS / cols);
+      const zoneW = vw / cols;
+      const zoneH = vh / rows;
+
       agents.forEach((a, i) => {
-        if (i >= liveCount) {
-          a.active = false;
-          return;
-        }
-        // Start each agent at a staggered grid position across the viewport
-        const cols = 4;
-        const col  = i % cols;
-        const row  = Math.floor(i / cols);
-        const zoneW = vw / cols;
-        const zoneH = vh / Math.ceil(liveCount / cols);
-        a.tx = col * zoneW + zoneW * 0.5;
-        a.ty = row * zoneH + zoneH * 0.5;
-        a.x  = a.tx + (Math.random() - 0.5) * 60;
-        a.y  = a.ty + (Math.random() - 0.5) * 40;
+        // ALL agents stay visible and active — just the first few hover near the rect
         a.active = true;
+
+        if (i < 3 && layerRect && layerRect.width > 0 && layerRect.height > 0) {
+          // Near the active layer
+          a.tx = layerRect.left + 8 + Math.random() * Math.max(30, layerRect.width  - 20);
+          a.ty = layerRect.top  + 4 + Math.random() * Math.max(15, layerRect.height - 10);
+        } else {
+          // Spread across zone grid — each agent owns a cell
+          const col = i % cols;
+          const row = Math.floor(i / cols) % rows;
+          a.tx = col * zoneW + Math.random() * zoneW * 0.8 + zoneW * 0.1;
+          a.ty = row * zoneH + Math.random() * zoneH * 0.8 + zoneH * 0.1;
+        }
+
+        a.tx = Math.max(10, Math.min(vw - 90, a.tx));
+        a.ty = Math.max(10, Math.min(vh - 60, a.ty));
+
+        // If this agent was just made active from hidden, spawn near its target
+        if (a.x === 0 && a.y === 0) {
+          a.x = a.tx + (Math.random() - 0.5) * 80;
+          a.y = a.ty + (Math.random() - 0.5) * 50;
+        }
       });
     }
 
@@ -521,14 +518,11 @@
       const vh = window.innerHeight;
       const introAgentCount = MIN_AGENTS;
 
-      // Two ribbon streams — upper and lower halves
+      // Two ribbon streams — upper and lower halves (ALL MAX_AGENTS, not just MIN)
       agents.forEach((a, i) => {
-        if (i >= introAgentCount) { a.active = false; return; }
-        a.active = true;
-        // Stream A: top-left to top-right wave
-        // Stream B: bottom-right to bottom-left wave
-        const stream = i < introAgentCount / 2 ? 0 : 1;
-        const t = (i % Math.ceil(introAgentCount / 2)) / Math.ceil(introAgentCount / 2);
+        a.active = true; // ALL agents visible during intro
+        const stream = i < MAX_AGENTS / 2 ? 0 : 1;
+        const t = (i % Math.ceil(MAX_AGENTS / 2)) / Math.ceil(MAX_AGENTS / 2);
         if (stream === 0) {
           a.x = t * vw * 0.9 + 20;
           a.y = 60 + Math.sin(t * Math.PI) * vh * 0.18;
@@ -539,7 +533,7 @@
         a.tx = a.x; a.ty = a.y;
       });
 
-      // Animate intro ribbons — agents weave
+      // Animate intro ribbons — agents weave continuously (never stop)
       let introStart = null;
       let introRaf   = null;
       function introFrame(now) {
@@ -552,18 +546,17 @@
         const vh2 = window.innerHeight;
 
         agents.forEach((a, i) => {
-          if (!a.active) return;
-          const stream = i < Math.ceil(MIN_AGENTS / 2) ? 0 : 1;
-          const baseT = (i % Math.ceil(MIN_AGENTS / 2)) / Math.ceil(MIN_AGENTS / 2);
-          const t = (baseT + frac * 0.4) % 1; // gentle drift along ribbon
-          const wave = Math.sin((t + frac) * Math.PI * 2) * 30;
+          const stream = i < Math.ceil(MAX_AGENTS / 2) ? 0 : 1;
+          const baseT = (i % Math.ceil(MAX_AGENTS / 2)) / Math.ceil(MAX_AGENTS / 2);
+          const t = (baseT + frac * 0.5) % 1; // drift along ribbon
+          const wave = Math.sin((t + frac) * Math.PI * 2) * 35;
 
           if (stream === 0) {
             a.tx = 20 + t * vw2 * 0.9;
-            a.ty = 55 + wave + frac * vh2 * 0.08;
+            a.ty = 55 + wave + frac * vh2 * 0.09;
           } else {
             a.tx = vw2 - 20 - t * vw2 * 0.9;
-            a.ty = vh2 - 80 - wave - frac * vh2 * 0.08;
+            a.ty = vh2 - 80 - wave - frac * vh2 * 0.09;
           }
         });
 
@@ -580,6 +573,7 @@
     // ── Main Replay ───────────────────────────────────────────────────────
     function startReplay() {
       if (isReplaying) {
+        // If already running, full stop first
         isReplaying = false;
         clearTimers();
         restoreAllSavedText();
@@ -593,12 +587,6 @@
       const layers = collectLayers();
       const total  = layers.length;
 
-      // Decide live agent count — fixed for this run, varies 14–18 based on layer count
-      const liveCount = MIN_AGENTS + (total % (MAX_AGENTS - MIN_AGENTS + 1));
-
-      // Pre-assign layers round-robin so ALL agents always have work
-      preAssignLayers(total, liveCount);
-
       // Blank canvas
       layers.forEach(item => {
         item.el.classList.remove('swarm-built-layer', 'swarm-wireframe-layer');
@@ -609,18 +597,15 @@
       actionBtn.textContent = 'Go Live';
       actionBtn.classList.remove('bg-brand-600', 'hover:bg-brand-500');
       actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-      statusText.textContent = `${liveCount} agents • 0/${total}`;
+      statusText.textContent = `${MIN_AGENTS} agents • 0/${total}`;
 
       // Start 60fps physics loop
       lastPhysicsTime = performance.now();
       rafId = requestAnimationFrame(physicsLoop);
 
-      // Run 1.7s intro ribbons, then begin building
+      // Run 1.7s intro, then begin building
       runIntro(() => {
         if (!isReplaying) return;
-
-        // Spread all liveCount agents across the viewport at start of build
-        activateAgents(liveCount);
 
         let currentDelay = 0;
 
@@ -628,7 +613,7 @@
           const baseInterval = item.mode === 'text' ? 200 : 135;
           const stepDelay = Math.max(40, Math.round(baseInterval / speedMultiplier));
 
-          // Phase A: wireframe sketch
+          // Phase A: wireframe
           replayTimers.push(setTimeout(() => {
             if (!isReplaying) return;
             item.el.classList.remove('swarm-blank-layer');
@@ -636,16 +621,16 @@
             playWireframeSound();
           }, Math.max(0, currentDelay - Math.round(80 / speedMultiplier))));
 
-          // Phase B: build — only the assigned agent moves to this layer's rect
+          // Phase B: build
           replayTimers.push(setTimeout(() => {
             if (!isReplaying) return;
 
             const rect = item.el.getBoundingClientRect();
 
-            // Touring scroll — keep active layer in view
+            // Touring scroll
             if (touringEnabled) touringFollow(rect);
 
-            // Update global bbox (shows the most recently touched layer)
+            // Update bbox
             if (rect.width > 0 && rect.height > 0) {
               bbox.style.opacity = '1';
               bbox.style.left   = `${rect.left}px`;
@@ -666,10 +651,8 @@
             if (item.mode === 'text') typeElementText(item.el, speedMultiplier);
             else playSnapSound();
 
-            // Move ONLY the agent assigned to this layer — others keep stable targets
-            onLayerBuilt(idx, rect, liveCount);
-
-            statusText.textContent = `${liveCount} agents • ${idx + 1}/${total}`;
+            // Assign cursor targets spread across full viewport
+            assignAgentTargets(rect, MAX_AGENTS, idx, total);
 
             if (idx === total - 1) {
               replayTimers.push(setTimeout(() => stopReplay(true, total), Math.round(500 / speedMultiplier)));

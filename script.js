@@ -48,15 +48,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 4. Project Modal Data & Lightbox
+  // 4. Project Modal Data & Lightbox (All crisp images + real GitHub links)
   const projectDetails = {
     'utecoffe': {
       title: 'UTECOFFE — SPECIALTY TEA & COFFEE OMO PLATFORM',
       category: 'ENTERPRISE E-COMMERCE',
-      tools: 'Java 21, Spring Boot 3.3.5, PostgreSQL (34 Bảng), WebSocket STOMP, Docker, Cloudinary',
+      tools: 'Java 21, Spring Boot 3.3.5, PostgreSQL (34 Bảng), WebSocket STOMP, Cloudinary, Docker',
       img: 'assets/utecoffe.png',
       link: 'https://github.com/JiaysTM17/UTECoffe',
-      desc: 'Đồ án hệ sinh thái thương mại điện tử chuyên sâu cho chuỗi bán trà và cà phê đặc sản UTECoffe. Tích hợp mô hình OMO (Online-Merge-Offline), quầy Barista KDS cập nhật đơn hàng realtime qua WebSocket STOMP, CSDL 34 bảng quan hệ chuẩn hóa 3NF, 8 thuật toán doanh nghiệp tối ưu giá thành và tồn kho, hỗ trợ chạy 24/7 trên tên miền chính thức utecoffe.io.vn.'
+      demo: 'https://utecoffe.io.vn',
+      desc: 'Đồ án hệ thống website thương mại điện tử chuỗi bán trà & cà phê đặc sản UTECoffe. Tích hợp mô hình OMO (Online-Merge-Offline), quầy Barista KDS cập nhật đơn hàng realtime qua WebSocket STOMP, CSDL 34 bảng quan hệ chuẩn hóa 3NF, 8 thuật toán doanh nghiệp và triển khai thực tế tại tên miền utecoffe.io.vn.'
     },
     'nexora': {
       title: 'NEXORA — NEXT-GEN FASHION MARKETPLACE',
@@ -64,39 +65,44 @@ document.addEventListener('DOMContentLoaded', () => {
       tools: 'React.js, Node.js, Express, MongoDB, Tailwind CSS, REST API',
       img: 'assets/nexora.jpg',
       link: 'https://github.com/JiaysTM17/nexora',
-      desc: 'NEXORA là sàn thương mại điện tử thời trang thế hệ mới tích hợp mạng xã hội phong cách OOTD Community, chương trình đổi thời trang cũ Re-Loved Trade-In và nền tảng chăm sóc đồ xa xỉ Luxury VAS Care. Hệ thống sở hữu bộ nhận diện thương hiệu chỉn chu và kiến trúc frontend - backend hiện đại.'
+      demo: '',
+      desc: 'NEXORA là sàn thương mại điện tử thời trang thế hệ mới tích hợp mạng xã hội phong cách OOTD Community, chương trình thu cũ đổi mới Re-Loved Trade-In và nền tảng chăm sóc đồ xa xỉ Luxury VAS Care. Dự án bao gồm bộ nhận diện thương hiệu và tài liệu đặc tả hệ thống bài bản.'
     },
     'fullstack-ecommerce': {
       title: 'FULLSTACK E-COMMERCE PLATFORM',
       category: 'FULLSTACK SYSTEM',
       tools: 'React, Node.js, Express, MongoDB, Jest (3.151 Tests), OWASP Security',
-      img: 'assets/project-solartrip.png',
+      img: 'assets/project-fullstack.png',
       link: 'https://github.com/JiaysTM17/Fullstack-Ecommerce',
-      desc: 'Hệ thống website thương mại điện tử hoàn chỉnh đạt tỷ lệ pass test 100% với 3.151 automated tests trong 1.29s. Tích hợp két ký quỹ Escrow bảo vệ người mua, hệ thống voucher kép, hóa đơn giá trị gia tăng VAT, theo dõi GPS vận chuyển SPX Logistics và tuân thủ các quy tắc bảo mật OWASP khắt khe.'
+      demo: '',
+      desc: 'Hệ thống website bán lẻ trực tuyến hoàn chỉnh đạt tỷ lệ pass test 100% với 3.151 automated tests trong 1.29 giây. Tích hợp két ký quỹ Escrow bảo vệ người mua, hệ thống voucher kép, hóa đơn giá trị gia tăng VAT, theo dõi vận chuyển SPX Logistics và tuân thủ các quy chuẩn bảo mật OWASP.'
     },
     'kiet-assistant': {
       title: 'KIỆT ASSISTANT — AI PORTFOLIO AGENT',
       category: 'AI & LLM AGENT',
-      tools: 'Gemini API, Node.js, Express, RESTful API, Bilingual Support (VI/EN)',
-      img: 'assets/project-poster.png',
+      tools: 'Google Gemini API, Node.js, Express, RESTful API, Song ngữ VI/EN',
+      img: 'assets/project-ai.png',
       link: 'https://github.com/JiaysTM17/portfolio-assistant-api',
-      desc: 'Dịch vụ API trợ lý trí tuệ nhân tạo (AI Assistant) xây dựng trên nền tảng Google Gemini API. Trợ lý tự động xử lý ngôn ngữ tự nhiên song ngữ Việt - Anh, đối chiếu hồ sơ công khai từ GitHub để giải đáp về học vấn, kỹ năng, các đề tài đã thực hiện và mục tiêu tuyển dụng của Trương Gia Kiệt.'
+      demo: '',
+      desc: 'Dịch vụ API bảo mật cho trợ lý trí tuệ nhân tạo (AI Portfolio Assistant) xây dựng trên nền tảng Google Gemini API. Trợ lý tự động đối chiếu dữ liệu công khai trên GitHub để giải đáp các câu hỏi về học vấn, kỹ năng, dự án và định hướng nghề nghiệp của Trương Gia Kiệt.'
     },
     'task-manager': {
       title: 'TASK MANAGER WEB APPLICATION',
       category: 'WEB APPLICATION',
       tools: 'JavaScript ES6+, HTML5, CSS3 Grid, LocalStorage',
-      img: 'assets/project-bali.png',
+      img: 'assets/project-task.png',
       link: 'https://github.com/JiaysTM17/task-manager',
-      desc: 'Ứng dụng quản lý công việc và tiến độ cá nhân trực quan. Hỗ trợ tạo tác vụ, phân loại trạng thái (Todo, In Progress, Done), gắn tag độ ưu tiên, đếm ngược deadline và lưu trữ dữ liệu bền vững trên trình duyệt.'
+      demo: '',
+      desc: 'Ứng dụng web quản lý công việc cá nhân trực quan. Hỗ trợ tạo tác vụ, phân loại trạng thái, gắn nhãn độ ưu tiên, theo dõi tiến độ hoàn thành và lưu trữ dữ liệu bền vững ngay trên trình duyệt bằng LocalStorage.'
     },
     'ltw-video': {
       title: 'LTW JPA & SITEMESH VIDEO STREAMING SYSTEM',
       category: 'BACKEND ARCHITECTURE',
       tools: 'Spring Boot, Spring Data JPA, Sitemesh 3, PostgreSQL, Bootstrap 5',
-      img: 'assets/project-tour.png',
+      img: 'assets/project-video.png',
       link: 'https://github.com/JiaysTM17/LTW_BT16.11.2026_JPA_Video',
-      desc: 'Hệ thống website truyền phát và quản lý video học phần Lập trình Web tại trường Đại học Sư phạm Kỹ thuật TP.HCM (HCMUTE). Áp dụng Spring Boot, phân quyền người dùng, trang trí layout bằng Sitemesh 3 và tối ưu các thao tác CRUD dữ liệu video.'
+      demo: '',
+      desc: 'Hệ thống website quản lý và truyền phát video thuộc học phần Lập trình Web tại trường Đại học Sư phạm Kỹ thuật TP.HCM (HCMUTE). Ứng dụng Spring Boot, Spring Data JPA, phân quyền người dùng và trang trí layout đồng nhất bằng Sitemesh 3.'
     }
   };
 
@@ -107,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalTools = document.getElementById('modal-tools');
   const modalDesc = document.getElementById('modal-desc');
   const modalLink = document.getElementById('modal-link');
+  const modalDemo = document.getElementById('modal-demo');
   const modalCloseBtn = document.getElementById('modal-close-btn');
 
   function openModal(projectId) {
@@ -116,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tools: 'Spring Boot, React, Node.js',
       img: 'assets/utecoffe.png',
       link: 'https://github.com/JiaysTM17',
+      demo: '',
       desc: 'Dự án thực hiện bởi Trương Gia Kiệt.'
     };
 
@@ -127,6 +135,16 @@ document.addEventListener('DOMContentLoaded', () => {
     modalDesc.textContent = data.desc;
     if (modalLink) {
       modalLink.href = data.link;
+    }
+    if (modalDemo) {
+      if (data.demo) {
+        modalDemo.href = data.demo;
+        modalDemo.classList.remove('hidden');
+        modalDemo.classList.add('flex');
+      } else {
+        modalDemo.classList.add('hidden');
+        modalDemo.classList.remove('flex');
+      }
     }
 
     modal.classList.add('active');
@@ -196,38 +214,66 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 6. Contact Form Submission
+  // 6. Contact Form Submission (Real mailto trigger + instant confirmation UI)
   const contactForm = document.getElementById('contact-form');
   const formSuccess = document.getElementById('form-success');
 
   if (contactForm) {
     contactForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const submitBtn = contactForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const subject = document.getElementById('subject').value;
+      const message = document.getElementById('message').value.trim();
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `<span>Đang gửi...</span>`;
+      const bodyText = `Họ và tên: ${name}\nEmail: ${email}\nSố điện thoại: ${phone || 'Không có'}\n\nNội dung:\n${message}`;
+      const mailtoUrl = `mailto:truonggiakiet110806@gmail.com?subject=${encodeURIComponent('[Portfolio Contact] ' + subject)}&body=${encodeURIComponent(bodyText)}`;
 
-      setTimeout(() => {
-        contactForm.reset();
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        if (formSuccess) {
-          formSuccess.classList.remove('hidden');
-          setTimeout(() => {
-            formSuccess.classList.add('hidden');
-          }, 6000);
-        }
-      }, 800);
+      window.location.href = mailtoUrl;
+
+      contactForm.reset();
+      if (formSuccess) {
+        formSuccess.classList.remove('hidden');
+        setTimeout(() => {
+          formSuccess.classList.add('hidden');
+        }, 7000);
+      }
     });
   }
 
-  // 7. Resume Download Button
+  // 7. Interactive Resume Modal
   const downloadCvBtn = document.getElementById('download-cv-btn');
-  if (downloadCvBtn) {
+  const resumeModal = document.getElementById('resume-modal');
+  const resumeCloseBtn = document.getElementById('resume-close-btn');
+
+  if (downloadCvBtn && resumeModal) {
     downloadCvBtn.addEventListener('click', () => {
-      alert('Đang hiển thị bản tóm tắt hồ sơ của Trương Gia Kiệt (Software & Fullstack Developer). Bạn cũng có thể liên hệ trực tiếp qua email truonggiakiet110806@gmail.com.');
+      resumeModal.classList.remove('hidden');
+      resumeModal.classList.add('flex');
+      document.body.style.overflow = 'hidden';
+    });
+
+    const closeResume = () => {
+      resumeModal.classList.add('hidden');
+      resumeModal.classList.remove('flex');
+      document.body.style.overflow = '';
+    };
+
+    if (resumeCloseBtn) {
+      resumeCloseBtn.addEventListener('click', closeResume);
+    }
+
+    resumeModal.addEventListener('click', (e) => {
+      if (e.target === resumeModal) {
+        closeResume();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !resumeModal.classList.contains('hidden')) {
+        closeResume();
+      }
     });
   }
 

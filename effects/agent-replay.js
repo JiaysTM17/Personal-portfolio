@@ -167,14 +167,19 @@
 
   // ─── Global State ─────────────────────────────────────────────────────────
   let isReplaying     = false;
+  let isCompleted     = false;
+  let vortexMode      = false;
   let touringEnabled  = true;
   let soundEnabled    = false;
   let speedMultiplier = 1;
   let replayTimers    = [];
+  let buildTickTimer  = null;
   let rafId           = null;
   let audioCtx        = null;
   let savedHTMLMap    = new Map();
   let builtCount      = 0;
+  let mouseX          = window.innerWidth  * 0.5;
+  let mouseY          = window.innerHeight * 0.5;
 
   // ─── Audio ───────────────────────────────────────────────────────────────
   function ensureAudio() {
@@ -302,10 +307,20 @@
         y: window.innerHeight * 0.5,
         tx: 0, ty: 0,
         trackIdx: -1, // -1 = no track = hidden
-        agentSlot: 0, // which slot within the track (0,1,2)
+        agentSlot: 0, // which slot within the track
+        // Schooling-fish / whirlpool vortex params around cursor
+        vortexR: 46 + (i % 6) * 18 + (i % 3) * 6,
+        vortexSpeed: 2.2 + (5 - (i % 6)) * 0.36,
+        vortexPhase: (i / AGENTS_TOTAL) * Math.PI * 2 + (i % 3) * 0.35,
         color,
       });
     }
+
+    // Track user mouse cursor for schooling-fish vortex
+    window.addEventListener('mousemove', e => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    }, { passive: true });
 
     // ── Dock ──────────────────────────────────────────────────────────────
     const dock = document.createElement('div');
@@ -345,6 +360,7 @@
     function clearTimers() {
       replayTimers.forEach(t => clearTimeout(t));
       replayTimers = [];
+      if (buildTickTimer) { clearTimeout(buildTickTimer); buildTickTimer = null; }
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
     }
@@ -366,6 +382,8 @@
 
     function stopReplay(completed = false, total = 0) {
       isReplaying = false;
+      isCompleted = false;
+      vortexMode  = false;
       clearTimers();
       restoreAllSavedText();
       document.querySelectorAll('.swarm-blank-layer, .swarm-wireframe-layer').forEach(el => {
@@ -381,6 +399,28 @@
       statusText.textContent = completed
         ? `${total} layers • done`
         : `${MIN_AGENTS} agents • Live`;
+      document.documentElement.style.scrollBehavior = '';
+    }
+
+    // Completed state: keep agents visible & swirling like a school of fish around cursor
+    function enterCompletedVortex(total) {
+      isReplaying = false;
+      isCompleted = true;
+      vortexMode  = true;
+      if (buildTickTimer) { clearTimeout(buildTickTimer); buildTickTimer = null; }
+      replayTimers.forEach(t => clearTimeout(t));
+      replayTimers = [];
+      restoreAllSavedText();
+      document.querySelectorAll('.swarm-blank-layer, .swarm-wireframe-layer').forEach(el => {
+        el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
+        el.classList.add('swarm-built-layer');
+      });
+      tracks.forEach(hideTrack);
+      playCompleteSound();
+      actionBtn.textContent = 'Replay';
+      actionBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+      actionBtn.classList.add('bg-brand-600', 'hover:bg-brand-500');
+      statusText.textContent = `${total} layers • done`;
       document.documentElement.style.scrollBehavior = '';
     }
 
@@ -421,7 +461,7 @@
     }
 
     function physicsLoop(now) {
-      if (!isReplaying) return;
+      if (!isReplaying && !isCompleted) return;
       rafId = requestAnimationFrame(physicsLoop);
 
       const dt = Math.min((now - lastPhysicsTime) / 1000, 0.05);
@@ -429,30 +469,50 @@
 
       const vw = window.innerWidth;
       const vh = window.innerHeight;
+      const tSec = now * 0.001;
 
-      agents.forEach(a => {
+      agents.forEach((a, i) => {
         if (a.trackIdx < 0) {
           a.cur.style.opacity = '0';
           return;
         }
 
-        // Use stable a.tx / a.ty — no getBoundingClientRect() here
-        const dx   = a.tx - a.x;
-        const dy   = a.ty - a.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (vortexMode) {
+          // Schooling-fish / wave whirlpool around user's mouse cursor
+          const ang  = a.vortexPhase + tSec * a.vortexSpeed;
+          const wave = Math.sin(tSec * 3.6 - i * 0.52 + ang * 1.4) * 18;
+          const r    = a.vortexR + wave;
+          const vx   = mouseX + Math.cos(ang) * r + Math.sin(tSec * 2.1 + i) * 10;
+          const vy   = mouseY + Math.sin(ang) * r * 0.72 + Math.cos(tSec * 2.5 + i * 0.7) * 14;
 
-        if (dist < 6) {
-          // Arrived — wander to next random spot across full viewport
-          a.x = a.tx; a.y = a.ty;
-          pickNextTarget(a);
+          const dx   = vx - a.x;
+          const dy   = vy - a.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 0.5) {
+            const spd  = Math.max(260, dist * 7.5);
+            const step = Math.min(dist, spd * dt);
+            a.x += (dx / dist) * step;
+            a.y += (dy / dist) * step;
+          }
         } else {
-          // Fast far away, ease-out in final 80px → smooth arrival, no jitter
-          const spd = dist > 80
-            ? Math.max(1000, dist * 8)
-            : Math.max(220, dist * 5.5);
-          const step = Math.min(dist, spd * dt);
-          a.x += (dx / dist) * step;
-          a.y += (dy / dist) * step;
+          // Building mode: use stable a.tx / a.ty — no getBoundingClientRect() here
+          const dx   = a.tx - a.x;
+          const dy   = a.ty - a.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 6) {
+            // Arrived — wander to next random spot across full viewport
+            a.x = a.tx; a.y = a.ty;
+            pickNextTarget(a);
+          } else {
+            // Fast far away, ease-out in final 80px → smooth arrival, no jitter
+            const spd = dist > 80
+              ? Math.max(1000, dist * 8)
+              : Math.max(220, dist * 5.5);
+            const step = Math.min(dist, spd * dt);
+            a.x += (dx / dist) * step;
+            a.y += (dy / dist) * step;
+          }
         }
 
         a.x = Math.max(10, Math.min(vw - 90, a.x));
@@ -538,33 +598,26 @@
       }
     }
 
-    // ── 1.7s Intro: ribbon streams ─────────────────────────────────────────
-    // ALL agents visible during intro. Intro uses its OWN RAF — does NOT
-    // modify a.trackIdx so it never conflicts with physicsLoop.
-    // physicsLoop is NOT started until after intro completes.
+    // ── 1.7s Intro: scatter → whirlpool vortex → burst outward ─────────────
+    // ALL agents visible during intro. Uses its own RAF before physicsLoop starts.
     let introRafId = null;
 
     function runIntro(onDone) {
       overlay.style.display = 'block';
       const vw = window.innerWidth;
       const vh = window.innerHeight;
+      const maxR = Math.hypot(vw * 0.48, vh * 0.46);
 
-      // Intro positions stored separately — don't touch a.x/a.y (physics uses those)
+      // Seed each agent scattered across the full viewport perimeter/corners
       const ipos = agents.map((a, i) => {
-        const stream = i < AGENTS_TOTAL / 2 ? 0 : 1;
-        const t = (i % Math.ceil(AGENTS_TOTAL / 2)) / Math.ceil(AGENTS_TOTAL / 2);
-        let x, y;
-        if (stream === 0) {
-          x = t * vw * 0.9 + 20;
-          y = 60 + Math.sin(t * Math.PI) * vh * 0.18;
-        } else {
-          x = vw - 20 - t * vw * 0.9;
-          y = vh - 80 - Math.sin(t * Math.PI) * vh * 0.18;
-        }
-        // Show all agents in intro
+        const baseAng = (i / AGENTS_TOTAL) * Math.PI * 2 + (i % 3) * 0.28;
+        const startR  = maxR * (0.62 + (i % 4) * 0.11);
+        const coreR   = 26 + (i % 5) * 15; // staggered inner vortex radii
+        const x = Math.max(15, Math.min(vw - 95, vw * 0.5 + Math.cos(baseAng) * startR));
+        const y = Math.max(15, Math.min(vh - 65, vh * 0.5 + Math.sin(baseAng) * startR * 0.82));
         a.cur.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
         a.cur.style.opacity   = '1';
-        return { x, y };
+        return { x, y, baseAng, startR, coreR };
       });
 
       let introStart = null;
@@ -575,40 +628,48 @@
         const frac    = Math.min(elapsed / INTRO_DUR, 1);
         const vw2 = window.innerWidth;
         const vh2 = window.innerHeight;
+        const cx  = vw2 * 0.5;
+        const cy  = vh2 * 0.5;
 
         agents.forEach((a, i) => {
-          const stream = i < Math.ceil(AGENTS_TOTAL / 2) ? 0 : 1;
-          const baseT  = (i % Math.ceil(AGENTS_TOTAL / 2)) / Math.ceil(AGENTS_TOTAL / 2);
-          const t      = (baseT + frac * 0.5) % 1;
-          const wave   = Math.sin((t + frac) * Math.PI * 2) * 35;
-
-          let nx, ny;
-          if (stream === 0) {
-            nx = 20 + t * vw2 * 0.9;
-            ny = 55 + wave + frac * vh2 * 0.09;
+          const ip = ipos[i];
+          let r, ang;
+          if (frac < 0.78) {
+            // Phase 1: inward whirlpool spiral with wave undulation
+            const p = frac / 0.78;
+            const ease = p * p * (3 - 2 * p); // smoothstep
+            const wave = Math.sin(p * Math.PI * 3 + i * 0.65) * 26 * (1 - p * 0.5);
+            r   = ip.startR * (1 - ease) + ip.coreR * ease + wave;
+            ang = ip.baseAng + p * 5.2 + (1 - r / ip.startR) * 2.4;
           } else {
-            nx = vw2 - 20 - t * vw2 * 0.9;
-            ny = vh2 - 80 - wave - frac * vh2 * 0.09;
+            // Phase 2: rapid burst outward across the screen to start building
+            const b = (frac - 0.78) / 0.22;
+            const easeOut = 1 - Math.pow(1 - b, 2);
+            r   = ip.coreR + easeOut * maxR * 0.78;
+            ang = ip.baseAng + 7.6 + b * 1.4;
           }
 
-          // Smooth move toward ribbon target
-          const dx = nx - ipos[i].x;
-          const dy = ny - ipos[i].y;
+          const nx = Math.max(12, Math.min(vw2 - 95, cx + Math.cos(ang) * r));
+          const ny = Math.max(12, Math.min(vh2 - 65, cy + Math.sin(ang) * r * 0.80));
+
+          // Smoothly follow spiral target
+          const dx = nx - ip.x;
+          const dy = ny - ip.y;
           const d  = Math.sqrt(dx * dx + dy * dy);
           if (d > 1) {
-            const spd = Math.min(d, Math.max(380, d * 5) / 60);
-            ipos[i].x += (dx / d) * spd;
-            ipos[i].y += (dy / d) * spd;
+            const spd = Math.min(d, Math.max(550, d * 9) / 60);
+            ip.x += (dx / d) * spd;
+            ip.y += (dy / d) * spd;
           } else {
-            ipos[i].x = nx; ipos[i].y = ny;
+            ip.x = nx; ip.y = ny;
           }
-          a.cur.style.transform = `translate3d(${ipos[i].x.toFixed(1)}px,${ipos[i].y.toFixed(1)}px,0)`;
+          a.cur.style.transform = `translate3d(${ip.x.toFixed(1)}px,${ip.y.toFixed(1)}px,0)`;
           a.cur.style.opacity   = '1';
         });
 
         if (elapsed >= INTRO_DUR) {
           introRafId = null;
-          // Seed a.x/a.y from final intro positions so physics starts smoothly
+          // Seed a.x/a.y from final intro burst positions
           agents.forEach((a, i) => { a.x = ipos[i].x; a.y = ipos[i].y; });
           onDone();
           return;
@@ -629,6 +690,8 @@
       if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
 
       isReplaying = true;
+      isCompleted = false;
+      vortexMode  = false;
       builtCount  = 0;
 
       document.documentElement.style.scrollBehavior = 'auto';
@@ -658,9 +721,12 @@
       }
 
       // Distribute `count` agents across NUM_TRACKS (balanced)
-      function activateAgents(count) {
+      function activateAgents(count, clearOverlays = true) {
         const perTrack = Math.ceil(count / NUM_TRACKS);
-        tracks.forEach(tr => { tr.agentIndices = []; tr.currentEl = null; hideTrack(tr); });
+        tracks.forEach(tr => {
+          tr.agentIndices = [];
+          if (clearOverlays) { tr.currentEl = null; hideTrack(tr); }
+        });
         let assigned = 0;
         for (let t = 0; t < NUM_TRACKS && assigned < count; t++) {
           for (let s = 0; s < perTrack && assigned < count; s++) {
@@ -704,74 +770,99 @@
         lastPhysicsTime = performance.now();
         rafId = requestAnimationFrame(physicsLoop);
 
-        // ── Round-robin layer split across NUM_TRACKS ────────────────────
-        // All 4 tracks build the current viewport top-to-bottom simultaneously
-        // so parent <section>s appear right away and Touring stays in sync.
-        const trackLayers = tracks.map(() => []);
-        layers.forEach((item, i) => trackLayers[i % NUM_TRACKS].push(item));
+        // ── Reactive round-robin scheduler (supports Touring ON & OFF) ────
+        const trackStates = tracks.map(() => ({ queue: [], idx: 0, waiting: false }));
+        layers.forEach((item, i) => trackStates[i % NUM_TRACKS].queue.push(item));
 
-        const baseInterval = 280;
+        let nextTrackCursor = 0;
 
-        tracks.forEach((tr, t) => {
-          if (trackLayers[t].length === 0) return;
-          const startOffset = t * Math.round(50 / speedMultiplier);
-          let delay = startOffset;
+        function buildOneItem(tr, t, item, rect) {
+          if (touringEnabled && t === 0) touringFollow(rect);
 
-          trackLayers[t].forEach(item => {
-            const stepDelay = Math.max(60, Math.round(baseInterval / speedMultiplier));
+          item.el.classList.remove('swarm-blank-layer');
+          item.el.classList.add('swarm-wireframe-layer');
+          playWireframeSound();
 
-            // Phase A: wireframe flash
-            replayTimers.push(setTimeout(() => {
-              if (!isReplaying) return;
-              item.el.classList.remove('swarm-blank-layer');
-              item.el.classList.add('swarm-wireframe-layer');
-              playWireframeSound();
-            }, Math.max(0, delay - Math.round(90 / speedMultiplier))));
+          assignToTrack(tr, item, rect);
+          updateTrackOverlay(tr, rect, item.label);
 
-            // Phase B: build
-            replayTimers.push(setTimeout(() => {
-              if (!isReplaying) return;
-
-              const rect = item.el.getBoundingClientRect();
-
-              // Touring — driven by track 0 (frontrunner)
-              if (touringEnabled && t === 0) touringFollow(rect);
-
-              assignToTrack(tr, item, rect);
-              updateTrackOverlay(tr, rect, item.label);
-
-              // Ensure no ancestor container stays blank and hides this built element
-              let p = item.el.parentElement;
-              while (p && p !== document.body) {
-                if (p.classList.contains('swarm-blank-layer')) {
-                  p.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
-                  p.classList.add('swarm-built-layer');
-                }
-                p = p.parentElement;
+          const wireMs = Math.max(25, Math.round(80 / speedMultiplier));
+          replayTimers.push(setTimeout(() => {
+            if (!isReplaying) return;
+            // Ensure no ancestor container stays blank and hides this built element
+            let p = item.el.parentElement;
+            while (p && p !== document.body) {
+              if (p.classList.contains('swarm-blank-layer')) {
+                p.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
+                p.classList.add('swarm-built-layer');
               }
+              p = p.parentElement;
+            }
 
-              item.el.classList.remove('swarm-wireframe-layer');
-              item.el.classList.add('swarm-built-layer');
+            item.el.classList.remove('swarm-wireframe-layer');
+            item.el.classList.add('swarm-built-layer');
 
-              if (item.mode === 'text') typeElementText(item.el, speedMultiplier);
-              else playSnapSound();
+            if (item.mode === 'text') typeElementText(item.el, speedMultiplier);
+            else playSnapSound();
 
-              builtCount++;
+            builtCount++;
 
-              // Dynamic 14-18: recalculate every 35 layers
-              const newLive = getLiveCount();
-              if (newLive !== liveCount) { liveCount = newLive; activateAgents(liveCount); }
-              statusText.textContent = `${liveCount} agents • ${builtCount}/${total}`;
+            // Dynamic 14-18: recalculate every 35 layers
+            const newLive = getLiveCount();
+            if (newLive !== liveCount) { liveCount = newLive; activateAgents(liveCount, false); }
+            statusText.textContent = `${liveCount} agents • ${builtCount}/${total}`;
 
-              if (builtCount >= total) {
-                replayTimers.push(setTimeout(() => stopReplay(true, total),
-                  Math.round(600 / speedMultiplier)));
-              }
-            }, delay));
+            if (builtCount >= total) {
+              replayTimers.push(setTimeout(() => enterCompletedVortex(total),
+                Math.round(450 / speedMultiplier)));
+            }
+          }, wireMs));
+        }
 
-            delay += stepDelay;
-          });
-        });
+        function tickBuilder() {
+          buildTickTimer = null;
+          if (!isReplaying || isCompleted) return;
+
+          let builtThisTick = false;
+          for (let attempt = 0; attempt < NUM_TRACKS; attempt++) {
+            const t  = (nextTrackCursor + attempt) % NUM_TRACKS;
+            const st = trackStates[t];
+            if (st.idx >= st.queue.length) continue;
+
+            const item = st.queue[st.idx];
+            const rect = item.el.getBoundingClientRect();
+            const canBuild = touringEnabled || (rect.top < window.innerHeight + 60);
+
+            if (canBuild) {
+              st.waiting = false;
+              st.idx++;
+              buildOneItem(tracks[t], t, item, rect);
+              nextTrackCursor = (t + 1) % NUM_TRACKS;
+              builtThisTick = true;
+              break;
+            } else {
+              st.waiting = true;
+            }
+          }
+
+          const allQueuedDone = trackStates.every(s => s.idx >= s.queue.length);
+          if (allQueuedDone) return; // enterCompletedVortex will trigger when last wireMs finishes
+
+          if (builtThisTick) {
+            vortexMode = false;
+            const stepMs = Math.max(18, Math.round(70 / speedMultiplier));
+            buildTickTimer = setTimeout(tickBuilder, stepMs);
+          } else {
+            // Manual scroll mode: all visible layers built, waiting for user to scroll down
+            if (!vortexMode) {
+              vortexMode = true;
+              tracks.forEach(hideTrack);
+            }
+            buildTickTimer = setTimeout(tickBuilder, 120);
+          }
+        }
+
+        tickBuilder();
       });
     }
 
@@ -787,6 +878,9 @@
       tourBtn.className = touringEnabled
         ? 'px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors'
         : 'px-2.5 py-0.5 rounded-full bg-[#1a1f2e] text-gray-500 border border-[#2d364d] hover:text-gray-300 transition-colors';
+      if (touringEnabled && isReplaying && !isCompleted) {
+        vortexMode = false;
+      }
     });
 
     speedBtn.addEventListener('click', () => {
@@ -804,7 +898,7 @@
     });
 
     minimizeBtn.addEventListener('click', () => {
-      if (isReplaying) stopReplay(false);
+      if (isReplaying || isCompleted) stopReplay(false);
       dock.style.display = 'none';
       miniPill.classList.remove('hidden');
       miniPill.classList.add('flex');

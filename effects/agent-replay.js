@@ -692,13 +692,16 @@
       const helloW = Math.min(720, vw * 0.78);
       const helloH = Math.min(175, vh * 0.28);
 
-      // Generate 16 points for 'O' using equal X/Y pixel radii so 'O' is truly round
-      const oRx = Math.min(0.115, (helloH * 0.46) / helloW);
+      // Generate 14 points for 'O' as a sleek superellipse matching H/E/L/L width (0.15) & height (1.0)
+      const oRx = 0.075;
       const HELLO_POINTS = [
         ...HELL_POINTS,
-        ...Array.from({ length: 16 }, (_, k) => {
-          const a = (k / 16) * Math.PI * 2;
-          return [0.43 + Math.cos(a) * oRx, Math.sin(a) * 0.48];
+        ...Array.from({ length: 14 }, (_, k) => {
+          const a = (k / 14) * Math.PI * 2;
+          const ca = Math.cos(a), sa = Math.sin(a);
+          const x = Math.sign(ca) * Math.pow(Math.abs(ca), 0.78) * oRx;
+          const y = Math.sign(sa) * Math.pow(Math.abs(sa), 0.78) * 0.50;
+          return [0.415 + x, y];
         }),
       ];
       const totalIntro = HELLO_POINTS.length;

@@ -372,11 +372,13 @@
       if (buildTickTimer) { clearTimeout(buildTickTimer); buildTickTimer = null; }
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
+      if (scrollRafId) { cancelAnimationFrame(scrollRafId); scrollRafId = null; }
     }
 
     function restoreAllSavedText() {
       savedHTMLMap.forEach((html, el) => {
         el.classList.remove('swarm-typing-caret');
+        el.style.minHeight = '';
         el.innerHTML = html;
       });
       savedHTMLMap.clear();
@@ -438,6 +440,9 @@
       savedHTMLMap.set(el, el.innerHTML);
       const fullText = el.textContent.trim();
       if (!fullText) return;
+      // Reserve current height so typing multi-line text never shifts/shakes layout below
+      const h = el.getBoundingClientRect().height;
+      if (h > 0) el.style.minHeight = `${h}px`;
       el.textContent = '';
       el.classList.add('swarm-typing-caret');
       const stepChars = Math.max(1, Math.ceil(fullText.length / 12));
@@ -447,6 +452,7 @@
         pos += stepChars;
         if (pos >= fullText.length) {
           el.classList.remove('swarm-typing-caret');
+          el.style.minHeight = '';
           if (savedHTMLMap.has(el)) { el.innerHTML = savedHTMLMap.get(el); savedHTMLMap.delete(el); }
           return;
         }
@@ -596,27 +602,31 @@
       tr.offsets = tr.agentIndices.map(() => ({ ox: 0.5, oy: 0.5 }));
     }
 
-    // ── Touring scroll ─────────────────────────────────────────────────────
-    let scrollTarget  = 0;
-    let scrollCurrent = 0;
-    let scrollRafId   = null;
+    // ── Touring scroll (monotonic & silky 60fps exponential ease) ───────────
+    let scrollTarget   = 0;
+    let scrollCurrent  = 0;
+    let scrollRafId    = null;
+    let lastScrollTime = 0;
 
     function touringScrollTo(targetY) {
-      scrollTarget = Math.max(0, targetY);
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      scrollTarget = Math.max(0, Math.min(maxY, targetY));
       if (scrollRafId) return;
-      function step() {
+      scrollCurrent  = window.scrollY;
+      lastScrollTime = performance.now();
+      function step(now) {
         if (!touringEnabled || !isReplaying) { scrollRafId = null; return; }
+        const dt = Math.min((now - lastScrollTime) / 1000, 0.05);
+        lastScrollTime = now;
         const diff = scrollTarget - scrollCurrent;
-        if (Math.abs(diff) < 0.5) {
+        if (Math.abs(diff) < 0.8) {
           scrollCurrent = scrollTarget;
           window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
           scrollRafId = null;
           return;
         }
-        const d  = Math.abs(diff);
-        const px = d > 120
-          ? Math.sign(diff) * Math.max(60, d * 0.22)
-          : Math.sign(diff) * Math.max(3,  d * 0.12);
+        // Smooth exponential ease-out — zero sudden speed jumps or jitter
+        const px = diff * Math.min(1, dt * 6.5);
         scrollCurrent += px;
         window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
         scrollRafId = requestAnimationFrame(step);
@@ -624,10 +634,18 @@
       scrollRafId = requestAnimationFrame(step);
     }
 
-    function touringFollow(rect) {
+    function touringFollow(rect, el) {
+      if (el) {
+        const pos = getComputedStyle(el).position;
+        if (pos === 'fixed' || pos === 'sticky') return;
+      }
       const vh = window.innerHeight;
-      if (rect.top > vh * 0.60 || rect.bottom < 60) {
-        touringScrollTo(window.scrollY + rect.top - vh * 0.30);
+      if (rect.top > vh * 0.58) {
+        const nextY = window.scrollY + rect.top - vh * 0.30;
+        // Monotonic forward-only scroll so page never ping-pongs up & down
+        if (nextY > scrollTarget + 8) {
+          touringScrollTo(nextY);
+        }
       }
     }
 
@@ -859,7 +877,7 @@
         let nextTrackCursor = 0;
 
         function buildOneItem(tr, t, item, rect) {
-          if (touringEnabled && t === 0) touringFollow(rect);
+          if (touringEnabled && t === 0) touringFollow(rect, item.el);
 
           item.el.classList.remove('swarm-blank-layer');
           item.el.classList.add('swarm-wireframe-layer');

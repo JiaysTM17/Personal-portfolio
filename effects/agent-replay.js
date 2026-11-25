@@ -199,18 +199,29 @@
 
     // Pool of 18 Multiplayer Agent Cursors (dynamically 14–18 active)
     const cursors = [];
+    const cursorStates = [];
     for (let i = 0; i < MAX_AGENTS; i++) {
       const color = AGENT_COLORS[i % AGENT_COLORS.length];
       const cur = document.createElement('div');
       cur.className = 'agent-cursor';
       cur.style.opacity = '0';
-      cur.style.transform = `translate3d(${window.innerWidth * 0.5}px, ${window.innerHeight * 0.4}px, 0)`;
+      const startX = window.innerWidth * (0.2 + Math.random() * 0.6);
+      const startY = window.innerHeight * (0.2 + Math.random() * 0.5);
+      cur.style.transform = `translate3d(${startX}px, ${startY}px, 0)`;
       cur.innerHTML = `
         ${createPointerSVG(color)}
         <div class="agent-cursor-label" style="background:${color};">${AGENT_NAMES[i % AGENT_NAMES.length]}</div>
       `;
       overlay.appendChild(cur);
       cursors.push(cur);
+      cursorStates.push({
+        x: startX,
+        y: startY,
+        tx: startX,
+        ty: startY,
+        speed: 240 + (i % 5) * 42,
+        phase: i * 0.9,
+      });
     }
 
     document.body.appendChild(overlay);
@@ -297,23 +308,51 @@
       }
     }
 
-    function moveCursors(activeRect) {
-      cursors.forEach((cur, idx) => {
+    function pickCursorTarget(cs, idx, activeRect) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      if (activeRect && idx < 6) {
+        const padX = Math.max(60, activeRect.width + 40);
+        const padY = Math.max(40, activeRect.height + 30);
+        cs.tx = Math.min(vw - 75, Math.max(12, activeRect.left - 15 + Math.random() * padX));
+        cs.ty = Math.min(vh - 55, Math.max(12, activeRect.top - 10 + Math.random() * padY));
+      } else {
+        cs.tx = 28 + Math.random() * Math.max(120, vw - 140);
+        cs.ty = 48 + Math.random() * Math.max(120, vh - 140);
+      }
+    }
+
+    function updateCursorsContinuous(dt, simTime, activeRect) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      for (let idx = 0; idx < MAX_AGENTS; idx++) {
+        const cur = cursors[idx];
+        const cs = cursorStates[idx];
         if (idx >= activeAgentsCount) {
           cur.style.opacity = '0';
-          return;
+          continue;
         }
         cur.style.opacity = '1';
-        if (activeRect && idx < 6) {
-          const rx = activeRect.left + Math.random() * Math.max(50, activeRect.width);
-          const ry = activeRect.top + Math.random() * Math.max(30, activeRect.height);
-          cur.style.transform = `translate3d(${Math.min(window.innerWidth - 80, Math.max(10, rx))}px, ${Math.min(window.innerHeight - 60, Math.max(10, ry))}px, 0)`;
+
+        const dx = cs.tx - cs.x;
+        const dy = cs.ty - cs.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < 18) {
+          pickCursorTarget(cs, idx, activeRect);
         } else {
-          const rx = 30 + Math.random() * (window.innerWidth - 130);
-          const ry = 50 + Math.random() * (window.innerHeight - 130);
-          cur.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
+          const step = Math.min(dist, cs.speed * dt);
+          cs.x += (dx / dist) * step;
+          cs.y += (dy / dist) * step;
         }
-      });
+
+        // Subtle continuous drift so no cursor ever appears frozen
+        const driftX = Math.sin(simTime * 2.4 + cs.phase) * 5;
+        const driftY = Math.cos(simTime * 2.1 + cs.phase) * 5;
+        const renderX = Math.min(vw - 70, Math.max(8, cs.x + driftX));
+        const renderY = Math.min(vh - 45, Math.max(8, cs.y + driftY));
+        cur.style.transform = `translate3d(${renderX.toFixed(1)}px, ${renderY.toFixed(1)}px, 0)`;
+      }
     }
 
     function typeElementText(el) {
@@ -349,17 +388,18 @@
 
     function computeDynamicAgents(layers, currentIdx) {
       const vh = window.innerHeight;
-      let nearby = 0;
-      const start = Math.max(0, currentIdx - 6);
-      const end = Math.min(layers.length, currentIdx + 24);
-      for (let i = start; i < end; i++) {
+      let unbuiltVisible = 0;
+      const end = Math.min(layers.length, currentIdx + 40);
+      for (let i = currentIdx; i < end; i++) {
         const r = layers[i].el.getBoundingClientRect();
-        if (r.bottom >= -40 && r.top <= vh + 120) nearby++;
+        if (r.bottom >= 0 && r.top <= vh + 80) unbuiltVisible++;
       }
-      // Fluctuate naturally between 14 and 18 depending on section density
-      const densityFactor = Math.min(4, Math.floor(nearby / 5));
-      const jitter = (currentIdx % 3 === 0) ? 1 : 0;
-      return Math.max(MIN_AGENTS, Math.min(MAX_AGENTS, MIN_AGENTS + densityFactor + (densityFactor < 4 ? jitter : 0)));
+      // Fluctuate dynamically between 14 and 18 based on unbuilt density in current viewport
+      if (unbuiltVisible <= 6) return 14;
+      if (unbuiltVisible <= 11) return 15;
+      if (unbuiltVisible <= 17) return 16;
+      if (unbuiltVisible <= 24) return 17;
+      return 18;
     }
 
     function startReplay() {
@@ -375,7 +415,7 @@
 
       const layers = collectLayers();
       const total = layers.length;
-      activeAgentsCount = 15;
+      activeAgentsCount = computeDynamicAgents(layers, 0);
 
       // Step 1: BLANK CANVAS — hide all layers completely!
       layers.forEach(item => {
@@ -394,13 +434,15 @@
       let wireIdx = 0;
       let finishing = false;
       let finishTimer = 0;
+      let simTime = 0;
+      let currentScrollSpeed = 38;
       lastTs = 0;
       cursorAccum = 0;
       stepAccum = 0;
 
-      moveCursors(null);
+      cursorStates.forEach((cs, idx) => pickCursorTarget(cs, idx, null));
 
-      // Slightly calmer 1x pacing (~15% slower per step) while scaling proportionally at 2x & 3x
+      // Slightly calmer 1x pacing while scaling proportionally at 2x & 3x
       function getStepIntervalSec(item) {
         return item.mode === 'text' ? 0.145 : 0.105;
       }
@@ -412,21 +454,42 @@
         lastTs = ts;
 
         const dt = rawDt * speedMultiplier;
+        simTime += dt;
         cursorAccum += dt;
         stepAccum += dt;
 
-        // Move cursors smoothly, scaled by speedMultiplier
-        if (cursorAccum >= 0.40) {
+        // Re-target a few cursors toward the active element periodically, while moving all 60fps
+        if (cursorAccum >= 0.45) {
           cursorAccum = 0;
-          moveCursors(activeRect);
+          for (let i = 0; i < 4; i++) {
+            const idx = Math.floor(Math.random() * Math.min(6, activeAgentsCount));
+            pickCursorTarget(cursorStates[idx], idx, activeRect);
+          }
         }
+        updateCursorsContinuous(dt, simTime, activeRect);
 
-        // Smooth proportional Touring scroll (never stalls at 2x / 3x)
+        // Continuous Adaptive Touring Scroll (never stops completely; slows in dense areas, speeds up after)
         if (touringEnabled) {
-          const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-          const clampedTarget = Math.min(maxScroll, targetScrollY);
-          if (Math.abs(clampedTarget - scrollFloatY) > 0.5) {
-            scrollFloatY += (clampedTarget - scrollFloatY) * Math.min(1, 5.5 * dt);
+          const vh = window.innerHeight;
+          const maxScroll = Math.max(0, document.documentElement.scrollHeight - vh);
+          if (scrollFloatY < maxScroll) {
+            let unbuiltBehindOrHere = 0;
+            const checkEnd = Math.min(total, nextIdx + 28);
+            for (let i = nextIdx; i < checkEnd; i++) {
+              const r = layers[i].el.getBoundingClientRect();
+              if (r.top < vh * 0.62) unbuiltBehindOrHere++;
+            }
+            const nextTop = nextIdx < total ? layers[nextIdx].el.getBoundingClientRect().top : vh;
+
+            let desiredSpeed = 78; // normal cruising speed
+            if (finishing || nextTop > vh * 0.68) {
+              desiredSpeed = 170; // current area done -> glide faster to next section
+            } else if (unbuiltBehindOrHere >= 8 || nextTop < vh * 0.32) {
+              desiredSpeed = 34; // dense/unfinished area -> slow down gently, never stop
+            }
+
+            currentScrollSpeed += (desiredSpeed - currentScrollSpeed) * Math.min(1, 3.5 * rawDt);
+            scrollFloatY = Math.min(maxScroll, scrollFloatY + currentScrollSpeed * dt);
             window.scrollTo({ top: scrollFloatY, behavior: 'instant' });
           }
         }
@@ -448,13 +511,6 @@
           const needed = getStepIntervalSec(item);
           if (stepAccum < needed) break;
           stepAccum -= needed;
-
-          if (touringEnabled) {
-            const r = item.el.getBoundingClientRect();
-            if (r.top > window.innerHeight * 0.62 || r.bottom < 80) {
-              targetScrollY = Math.max(0, scrollFloatY + r.top - window.innerHeight * 0.34);
-            }
-          }
 
           const rect = item.el.getBoundingClientRect();
           activeRect = rect;

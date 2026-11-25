@@ -1,123 +1,70 @@
-(() => {
-  'use strict';
+// Swarm Rebuild — Authentic Full-Page Multi-Agent UI/UX Build Replay
+// Clears the canvas, sketches wireframes, types headings with I-beam carets,
+// aligns bounding boxes with 18 agent cursors, supports 1x/2x/3x speed, Touring auto-scroll & Web Audio SFX.
 
-  const MAX_AGENTS = 10;
-  const INTRO_DURATION = 1.2; // seconds at 1x
-  const OUTRO_DURATION = 0.85;
-  const TOUR_SCROLL_SPEED = 85; // px/s at 1x
-
-  const AGENT_PROFILES = [
-    { name: 'Layout', color: '#3b82f6' },
-    { name: 'Type', color: '#a855f7' },
-    { name: 'Grid', color: '#06b6d4' },
-    { name: 'Assets', color: '#ec4899' },
-    { name: 'Spacing', color: '#f59e0b' },
-    { name: 'Tokens', color: '#10b981' },
-    { name: 'Cards', color: '#6366f1' },
-    { name: 'Align', color: '#f97316' },
-    { name: 'Motion', color: '#14b8a6' },
-    { name: 'UI', color: '#e11d48' },
+(function () {
+  const AGENT_COLORS = [
+    '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b',
+    '#10b981', '#06b6d4', '#f43f5e', '#6366f1', '#14b8a6'
   ];
 
-  const LAYER_SELECTORS = [
-    'header a',
-    'header button',
-    'header span.rounded-full',
-    '#hero span.rounded-full',
-    '#hero p',
-    '#hero h1',
-    '#hero h2',
-    '#hero a',
-    '#hero img',
-    '#hero .hero-stat',
-    'section.bg-\\[\\#0b0c10\\] h3',
-    'section.bg-\\[\\#0b0c10\\] p',
-    'section.bg-\\[\\#0b0c10\\] span.rounded-full',
-    'section.bg-\\[\\#0b0c10\\] a',
-    '#works h2',
-    '#works > div > div > p',
-    '#project-filters button',
-    '#projects-grid .project-card img',
-    '#projects-grid .project-card h3',
-    '#projects-grid .project-card p',
-    '#projects-grid .project-card span',
-    '#projects-grid .project-card a',
-    '#services h2',
-    '#services > div > div > p',
-    '#services .service-card h3',
-    '#services .service-card p',
-    '#services .service-card li',
-    '#services .service-card span',
-    '#docs h2',
-    '#docs > div > div > p',
-    '#docs .doc-card span',
-    '#docs .doc-card h3',
-    '#docs .doc-card p',
-    '#docs .doc-card button',
-    '#docs .doc-card a',
-    '#about h2',
-    '#about p',
-    '#about img',
-    '#about .stat-box',
-    '#journey h2',
-    '#journey .timeline-item h3',
-    '#journey .timeline-item p',
-    '#journey .timeline-item span',
-    '#contact h2',
-    '#contact p',
-    '#contact a',
-    '#contact input',
-    '#contact textarea',
-    '#contact button',
-    'footer a',
-    'footer p',
-    'footer span',
-    'main section h2',
-    'main section h3',
-    'main section p',
-    'main section img',
-    'main section a',
-    'main section button',
+  const AGENT_NAMES = [
+    'Layout-AI', 'UI-Core', 'Type-Bot', 'Grid-Sys',
+    'Style-V3', 'Hero-Bot', 'Card-AI', 'Nav-Bot',
+    'Motion-1', 'Bento-AI', 'DOM-Sync', 'Pixel-QA',
+    'Rim-FX', 'Flex-Bot', 'Meta-AI', 'Wire-AI',
+    'Font-Bot', 'Deploy-1'
+  ];
+
+  // Collect layers across the ENTIRE page from top to bottom
+  const LAYER_QUERY = [
+    { sel: 'header a.group', label: 'BrandLogo', type: 'box' },
+    { sel: 'header nav a', label: 'NavLink', type: 'text' },
+    { sel: 'header .hidden.md\\:flex', label: 'HeaderActions', type: 'box' },
+    { sel: '#hero .inline-flex.rounded-full', label: 'StudentBadge', type: 'box' },
+    { sel: '#hero .font-handwriting', label: 'Greeting', type: 'text' },
+    { sel: '#hero h1', label: 'HeroTitle', type: 'text' },
+    { sel: '#hero h2', label: 'RoleTitle', type: 'text' },
+    { sel: '#hero p.text-gray-300', label: 'HeroBio', type: 'box' },
+    { sel: '#hero .font-display.font-black.tracking-tighter', label: 'PortfolioBg', type: 'box' },
+    { sel: '#hero img[alt*="Trương Gia Kiệt"]', label: 'PortraitCutout', type: 'box' },
+    { sel: '#hero a[href="#works"]', label: 'PrimaryCTA', type: 'box' },
+    { sel: '#hero a[href*="github.com"]', label: 'GitHubCTA', type: 'box' },
+    { sel: '#hero .flex.flex-wrap.items-center.gap-5', label: 'QuickContact', type: 'box' },
+    { sel: '#hero .md\\:col-span-2 > a', label: 'HeroStat', type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] h2', label: 'BentoHeading', type: 'text' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-6', label: 'BentoCard', type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-7', label: 'TechMatrix', type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-5', label: 'StudioClock', type: 'box' },
+    { sel: '#works h2', label: 'WorksTitle', type: 'text' },
+    { sel: '#project-filters button', label: 'FilterTab', type: 'box' },
+    { sel: '#projects-grid .project-card', label: 'ProjectCard', type: 'box' },
+    { sel: '#services h2', label: 'ServicesTitle', type: 'text' },
+    { sel: '#services .accordion-item', label: 'TechAccordion', type: 'box' },
+    { sel: '#docs h2', label: 'DocsTitle', type: 'text' },
+    { sel: '#docs .space-y-4 > div', label: 'ArchitectureDoc', type: 'box' },
+    { sel: '#about h2', label: 'AboutTitle', type: 'text' },
+    { sel: '#about .lg\\:col-span-6', label: 'AboutColumn', type: 'box' },
+    { sel: '#journey h2', label: 'JourneyTitle', type: 'text' },
+    { sel: '#journey .space-y-6 > div', label: 'TimelineItem', type: 'box' },
+    { sel: '#journey .bg-\\[\\#f5f6f8\\]', label: 'ResumeCard', type: 'box' },
+    { sel: '#contact h2', label: 'ContactTitle', type: 'text' },
+    { sel: '#contact #copy-email-btn', label: 'EmailCopyCard', type: 'box' },
+    { sel: '#contact-form', label: 'ContactForm', type: 'box' },
+    { sel: 'footer', label: 'Footer', type: 'box' }
   ];
 
   let isReplaying = false;
-  let phase = 'idle'; // 'intro' | 'build' | 'outro'
-  let rafId = null;
-  let lastTs = 0;
-  let simTime = 0;
-  let phaseTimer = 0;
-  let speedMultiplier = 1;
-  let tourEnabled = true;
-  let isMuted = true;
-  let scrollFloatY = 0;
-
-  let overlayEl = null;
-  let dockEl = null;
-  let miniPillEl = null;
+  let touringEnabled = true;
+  let soundEnabled = false; // User can toggle sound ON anytime
+  let speedMultiplier = 1;  // Cycles 1 -> 2 -> 3
+  let replayTimers = [];
+  let cursorLoopId = null;
   let audioCtx = null;
-  let lastPopTs = 0;
-  let lastKeyTs = 0;
+  let savedHTMLMap = new Map();
 
-  let layers = [];
-  let agents = [];
-  let builtCount = 0;
-  let heroMaxY = 720;
-
-  function clamp(v, min, max) {
-    return Math.max(min, Math.min(max, v));
-  }
-
-  function createCursorSvg(color) {
-    return `
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M5.5 3.5L19.5 11.2L12.6 13.4L10.4 20.3L5.5 3.5Z"
-              fill="${color}" stroke="#09090b" stroke-width="1.6" stroke-linejoin="round"/>
-      </svg>
-    `;
-  }
-
+  // Web Audio API Synthesizer for crisp UI design sounds (no external files required)
   function ensureAudio() {
-    if (isMuted) return null;
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (Ctx) audioCtx = new Ctx();
@@ -125,662 +72,397 @@
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume().catch(() => {});
     }
-    return audioCtx;
   }
 
-  function playKeyTick() {
-    if (isMuted) return;
-    const nowMs = performance.now();
-    if (nowMs - lastKeyTs < 65) return;
-    lastKeyTs = nowMs;
-
-    const ctx = ensureAudio();
-    if (!ctx) return;
-
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(760 + Math.random() * 240, now);
-    gain.gain.setValueAtTime(0.018, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.03);
-  }
-
-  function playSnapPop(freqBase = 480) {
-    if (isMuted) return;
-    const nowMs = performance.now();
-    if (nowMs - lastPopTs < 60) return;
-    lastPopTs = nowMs;
-
-    const ctx = ensureAudio();
-    if (!ctx) return;
-
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    const f = freqBase + (Math.random() * 160 - 60);
-    osc.frequency.setValueAtTime(f, now);
-    osc.frequency.exponentialRampToValueAtTime(f * 1.32, now + 0.045);
-
-    gain.gain.setValueAtTime(0.032, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.055);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.06);
-  }
-
-  function playDoneChord() {
-    if (isMuted) return;
-    const ctx = ensureAudio();
-    if (!ctx) return;
-    const freqs = [523.25, 659.25, 783.99, 1046.5];
-    freqs.forEach((f, idx) => {
-      const now = ctx.currentTime + idx * 0.055;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(f, now);
-      gain.gain.setValueAtTime(0.038, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+  function playTone(freq, duration, vol = 0.03, type = 'sine') {
+    if (!soundEnabled) return;
+    ensureAudio();
+    if (!audioCtx) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
       osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.34);
-    });
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (_) {}
+  }
+
+  function playWireframeSound() { playTone(520 + Math.random() * 140, 0.04, 0.02, 'triangle'); }
+  function playTypeSound() { playTone(780 + Math.random() * 200, 0.025, 0.015, 'square'); }
+  function playSnapSound() { playTone(380 + Math.random() * 180, 0.05, 0.025, 'sine'); }
+  function playCompleteSound() {
+    if (!soundEnabled) return;
+    setTimeout(() => playTone(523.25, 0.12, 0.04, 'sine'), 0);
+    setTimeout(() => playTone(659.25, 0.12, 0.04, 'sine'), 90);
+    setTimeout(() => playTone(783.99, 0.22, 0.05, 'sine'), 180);
+  }
+
+  function createPointerSVG(color) {
+    return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2.5 1.5L13.5 7.5L8.2 9.1L5.8 14.2L2.5 1.5Z" fill="${color}" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round"/>
+    </svg>`;
   }
 
   function collectLayers() {
     const seen = new Set();
-    const raw = [];
-    const scrollY = window.scrollY || 0;
-
-    LAYER_SELECTORS.forEach((sel) => {
-      let els = [];
-      try {
-        els = document.querySelectorAll(sel);
-      } catch (_) {
-        return;
-      }
-      els.forEach((el) => {
-        if (seen.has(el)) return;
-        if (el.closest('#agent-replay-overlay') || el.closest('#agent-replay-dock')) return;
-        if (el.closest('.fixed')) return;
-
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
-
-        const rect = el.getBoundingClientRect();
-        if (rect.width < 8 || rect.height < 8) return;
-        if (rect.width > window.innerWidth * 0.98 && rect.height > window.innerHeight * 0.95) return;
-
-        seen.add(el);
-        const absTop = rect.top + scrollY;
-        const absLeft = rect.left + (window.scrollX || 0);
-        const text = (el.innerText || '').trim();
-        const isText = el.children.length === 0 && text.length > 0 && el.tagName !== 'IMG';
-
-        raw.push({
-          el,
-          absTop,
-          absLeft,
-          width: rect.width,
-          height: rect.height,
-          isText,
-          textLen: text.length,
-          claimed: false,
-          built: false,
-        });
-      });
-    });
-
-    // Deduplicate elements with nearly identical bounding boxes
-    const filtered = [];
-    for (let i = 0; i < raw.length; i++) {
-      const a = raw[i];
-      let dup = false;
-      for (let j = 0; j < filtered.length; j++) {
-        const b = filtered[j];
-        if (
-          Math.abs(a.absTop - b.absTop) < 4 &&
-          Math.abs(a.absLeft - b.absLeft) < 4 &&
-          Math.abs(a.width - b.width) < 10 &&
-          Math.abs(a.height - b.height) < 10
-        ) {
-          dup = true;
-          break;
+    const list = [];
+    LAYER_QUERY.forEach(item => {
+      document.querySelectorAll(item.sel).forEach((el, idx) => {
+        if (!seen.has(el)) {
+          seen.add(el);
+          // Only animate typing on leaf-ish elements or headings with simple structure
+          const hasComplexChildren = el.querySelectorAll('div, svg, img').length > 0;
+          const mode = (item.type === 'text' && !hasComplexChildren) ? 'text' : 'box';
+          list.push({
+            el,
+            label: idx > 0 ? `${item.label}_${idx + 1}` : item.label,
+            mode
+          });
         }
-      }
-      if (!dup) filtered.push(a);
-    }
-
-    filtered.sort((a, b) => {
-      if (Math.abs(a.absTop - b.absTop) > 12) return a.absTop - b.absTop;
-      return a.absLeft - b.absLeft;
-    });
-
-    return filtered;
-  }
-
-  function showMiniPill() {
-    if (!miniPillEl) {
-      miniPillEl = document.createElement('button');
-      miniPillEl.type = 'button';
-      miniPillEl.className =
-        'fixed bottom-5 right-5 z-[100] flex items-center gap-2 px-3.5 py-2 rounded-full bg-zinc-900/90 border border-blue-500/40 text-xs font-mono text-zinc-200 shadow-xl backdrop-blur-md hover:border-blue-400 transition cursor-pointer';
-      miniPillEl.innerHTML =
-        '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>Swarm Replay</span>';
-      miniPillEl.addEventListener('click', () => {
-        if (miniPillEl) miniPillEl.style.display = 'none';
-        startSwarmReplay();
       });
-      document.body.appendChild(miniPillEl);
-    }
-    miniPillEl.style.display = 'flex';
+    });
+    // Sort top-to-bottom by document offsetTop so Touring scrolls naturally downward
+    list.sort((a, b) => {
+      const ay = a.el.getBoundingClientRect().top + window.scrollY;
+      const by = b.el.getBoundingClientRect().top + window.scrollY;
+      return ay - by;
+    });
+    return list;
   }
 
-  function createOverlay() {
-    if (overlayEl) overlayEl.remove();
-    overlayEl = document.createElement('div');
-    overlayEl.id = 'agent-replay-overlay';
-    document.body.appendChild(overlayEl);
-  }
+  function initSwarmReplay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'agent-replay-overlay';
+    overlay.style.display = 'none';
 
-  function createDock() {
-    if (dockEl) dockEl.remove();
-    dockEl = document.createElement('div');
-    dockEl.id = 'agent-replay-dock';
-    dockEl.innerHTML = `
-      <div class="dock-hide-mobile flex items-center gap-1 mr-1">
-        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-      </div>
-      <span id="swarm-dock-status" class="text-zinc-200 whitespace-nowrap">Clearing canvas...</span>
-      <button id="swarm-tour-btn" type="button" class="px-2.5 py-0.5 rounded-full font-medium transition cursor-pointer ${
-        tourEnabled ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400'
-      }">Tour</button>
-      <button id="swarm-speed-btn" type="button" class="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition cursor-pointer">${speedMultiplier}x</button>
-      <button id="swarm-mute-btn" type="button" class="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition cursor-pointer" title="Toggle Sound">${
-        isMuted ? '🔇' : '🔊'
-      }</button>
-      <button id="swarm-action-btn" type="button" class="px-3 py-0.5 rounded-full font-semibold bg-emerald-500 text-zinc-950 hover:bg-emerald-400 transition cursor-pointer">Go Live</button>
-      <button id="swarm-close-btn" type="button" class="px-1.5 py-0.5 text-zinc-400 hover:text-white transition cursor-pointer" title="Minimize">✕</button>
+    const guideH = document.createElement('div');
+    guideH.className = 'agent-guide-h';
+    guideH.style.opacity = '0';
+
+    const guideV = document.createElement('div');
+    guideV.className = 'agent-guide-v';
+    guideV.style.opacity = '0';
+
+    const bbox = document.createElement('div');
+    bbox.className = 'agent-bbox';
+    bbox.style.opacity = '0';
+    bbox.innerHTML = `
+      <span class="agent-bbox-handle tl"></span>
+      <span class="agent-bbox-handle tr"></span>
+      <span class="agent-bbox-handle bl"></span>
+      <span class="agent-bbox-handle br"></span>
+      <span class="agent-bbox-tag" id="bbox-tag">Layer</span>
+      <span class="agent-bbox-dim" id="bbox-dim">0 × 0</span>
     `;
-    document.body.appendChild(dockEl);
 
-    dockEl.querySelector('#swarm-tour-btn').addEventListener('click', () => {
-      tourEnabled = !tourEnabled;
-      const btn = dockEl.querySelector('#swarm-tour-btn');
-      btn.className = `px-2.5 py-0.5 rounded-full font-medium transition cursor-pointer ${
-        tourEnabled ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400'
-      }`;
-      if (tourEnabled) scrollFloatY = window.scrollY;
-    });
+    overlay.appendChild(guideH);
+    overlay.appendChild(guideV);
+    overlay.appendChild(bbox);
 
-    dockEl.querySelector('#swarm-speed-btn').addEventListener('click', () => {
-      speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 3 : 1;
-      dockEl.querySelector('#swarm-speed-btn').textContent = `${speedMultiplier}x`;
-    });
-
-    dockEl.querySelector('#swarm-mute-btn').addEventListener('click', () => {
-      isMuted = !isMuted;
-      dockEl.querySelector('#swarm-mute-btn').textContent = isMuted ? '🔇' : '🔊';
-      if (!isMuted) ensureAudio();
-    });
-
-    dockEl.querySelector('#swarm-action-btn').addEventListener('click', () => {
-      if (isReplaying) {
-        finishReplay(true);
-      } else {
-        startSwarmReplay();
-      }
-    });
-
-    dockEl.querySelector('#swarm-close-btn').addEventListener('click', () => {
-      if (isReplaying) finishReplay(true);
-      if (dockEl) dockEl.style.display = 'none';
-      showMiniPill();
-    });
-  }
-
-  function createAgentPool() {
-    agents = [];
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    for (let i = 0; i < MAX_AGENTS; i++) {
-      const profile = AGENT_PROFILES[i % AGENT_PROFILES.length];
-      const el = document.createElement('div');
-      el.className = 'agent-cursor';
-      el.innerHTML = `
-        ${createCursorSvg(profile.color)}
-        <span class="agent-cursor-label" style="background:${profile.color}">${profile.name}</span>
+    // 18 Multiplayer Agent Cursors
+    const cursors = [];
+    for (let i = 0; i < 18; i++) {
+      const color = AGENT_COLORS[i % AGENT_COLORS.length];
+      const cur = document.createElement('div');
+      cur.className = 'agent-cursor';
+      cur.style.opacity = '0';
+      cur.style.transform = `translate3d(${window.innerWidth * 0.5}px, ${window.innerHeight * 0.4}px, 0)`;
+      cur.innerHTML = `
+        ${createPointerSVG(color)}
+        <div class="agent-cursor-label" style="background:${color};">${AGENT_NAMES[i % AGENT_NAMES.length]}</div>
       `;
-      el.style.opacity = '1';
-      overlayEl.appendChild(el);
+      overlay.appendChild(cur);
+      cursors.push(cur);
+    }
 
-      agents.push({
-        id: i,
-        profile,
-        el,
-        x: vw * 0.5,
-        y: vh * 0.45,
-        angle: 0,
-        visible: true,
-        state: 'idle', // 'idle' | 'travel' | 'work'
-        task: null,
-        workTime: 0,
-        workDur: 0.48,
-        dragBox: null,
-        dragDim: null,
-        guideH: null,
-        guideV: null,
-        caret: null,
-        lastSoundTick: 0,
+    document.body.appendChild(overlay);
+
+    // Floating Control Dock
+    const dock = document.createElement('div');
+    dock.id = 'agent-replay-dock';
+    dock.innerHTML = `
+      <div class="flex -space-x-1.5 dock-hide-mobile">
+        <span class="w-4 h-4 rounded-full bg-blue-500 border border-[#0d0f17]"></span>
+        <span class="w-4 h-4 rounded-full bg-purple-500 border border-[#0d0f17]"></span>
+        <span class="w-4 h-4 rounded-full bg-pink-500 border border-[#0d0f17]"></span>
+        <span class="w-4 h-4 rounded-full bg-amber-500 border border-[#0d0f17]"></span>
+        <span class="w-4 h-4 rounded-full bg-emerald-500 border border-[#0d0f17]"></span>
+      </div>
+      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">18 agents</span>
+      <button id="replay-tour-btn" type="button" title="Tự động cuộn theo tiến trình thiết kế" class="px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors">Touring</button>
+      <button id="replay-speed-btn" type="button" title="Tốc độ 1x / 2x / 3x" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-200 border border-[#2d364d] transition-colors">1x</button>
+      <button id="replay-sound-btn" type="button" title="Bật / Tắt âm thanh thiết kế" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-400 border border-[#2d364d] transition-colors">🔇</button>
+      <button id="replay-action-btn" type="button" class="px-3 py-1 rounded-full bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors whitespace-nowrap">Replay</button>
+      <button id="replay-minimize-btn" type="button" title="Thu gọn thanh điều khiển" class="text-gray-400 hover:text-white px-1 transition-colors">×</button>
+    `;
+    document.body.appendChild(dock);
+
+    const miniPill = document.createElement('button');
+    miniPill.id = 'agent-replay-mini';
+    miniPill.type = 'button';
+    miniPill.className = 'fixed bottom-5 left-5 z-[95] hidden items-center gap-1.5 bg-[#12141a]/95 backdrop-blur-md border border-brand-500/50 hover:border-brand-400 text-brand-400 hover:text-white px-3 py-1.5 rounded-full text-xs font-mono shadow-xl transition-all';
+    miniPill.innerHTML = '<span>✦</span><span>Swarm Replay</span>';
+    document.body.appendChild(miniPill);
+
+    const statusText = document.getElementById('replay-status-text');
+    const tourBtn = document.getElementById('replay-tour-btn');
+    const speedBtn = document.getElementById('replay-speed-btn');
+    const soundBtn = document.getElementById('replay-sound-btn');
+    const actionBtn = document.getElementById('replay-action-btn');
+    const minimizeBtn = document.getElementById('replay-minimize-btn');
+    const bboxTag = document.getElementById('bbox-tag');
+    const bboxDim = document.getElementById('bbox-dim');
+
+    function clearTimers() {
+      replayTimers.forEach(t => clearTimeout(t));
+      replayTimers = [];
+      if (cursorLoopId) {
+        clearInterval(cursorLoopId);
+        cursorLoopId = null;
+      }
+    }
+
+    function restoreAllSavedText() {
+      savedHTMLMap.forEach((html, el) => {
+        el.classList.remove('swarm-typing-caret');
+        el.innerHTML = html;
+      });
+      savedHTMLMap.clear();
+    }
+
+    function stopReplay(completed = false, totalCount = 0) {
+      isReplaying = false;
+      clearTimers();
+      restoreAllSavedText();
+
+      document.querySelectorAll('.swarm-blank-layer, .swarm-wireframe-layer').forEach(el => {
+        el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
+        el.classList.add('swarm-built-layer');
+      });
+
+      overlay.style.display = 'none';
+      bbox.style.opacity = '0';
+      guideH.style.opacity = '0';
+      guideV.style.opacity = '0';
+      cursors.forEach(c => (c.style.opacity = '0'));
+
+      actionBtn.textContent = 'Replay';
+      actionBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+      actionBtn.classList.add('bg-brand-600', 'hover:bg-brand-500');
+
+      if (completed) {
+        playCompleteSound();
+        statusText.textContent = `18 agents • ${totalCount}/${totalCount} layers`;
+      } else {
+        statusText.textContent = '18 agents • Live';
+      }
+    }
+
+    function moveCursors(activeRect) {
+      cursors.forEach((cur, idx) => {
+        cur.style.opacity = '1';
+        if (activeRect && idx < 6) {
+          const rx = activeRect.left + Math.random() * Math.max(50, activeRect.width);
+          const ry = activeRect.top + Math.random() * Math.max(30, activeRect.height);
+          cur.style.transform = `translate3d(${Math.min(window.innerWidth - 80, Math.max(10, rx))}px, ${Math.min(window.innerHeight - 60, Math.max(10, ry))}px, 0)`;
+        } else {
+          const rx = 30 + Math.random() * (window.innerWidth - 130);
+          const ry = 50 + Math.random() * (window.innerHeight - 130);
+          cur.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
+        }
       });
     }
-  }
 
-  function cleanupAgentArtifacts(a) {
-    if (a.dragBox) {
-      a.dragBox.remove();
-      a.dragBox = null;
-      a.dragDim = null;
-    }
-    if (a.guideH) {
-      a.guideH.remove();
-      a.guideH = null;
-    }
-    if (a.guideV) {
-      a.guideV.remove();
-      a.guideV = null;
-    }
-    if (a.caret) {
-      a.caret.remove();
-      a.caret = null;
-    }
-  }
-
-  function spawnWireframe(a, rect) {
-    cleanupAgentArtifacts(a);
-
-    const box = document.createElement('div');
-    box.className = 'agent-drag-box';
-    box.style.left = `${rect.left}px`;
-    box.style.top = `${rect.top}px`;
-    box.style.width = '0px';
-    box.style.height = '0px';
-
-    box.innerHTML = `
-      <span class="agent-drag-handle tl"></span>
-      <span class="agent-drag-handle tr"></span>
-      <span class="agent-drag-handle bl"></span>
-      <span class="agent-drag-handle br"></span>
-      <span class="agent-drag-crosshair">+</span>
-      <span class="agent-drag-dim">${Math.round(rect.width)} × ${Math.round(rect.height)}</span>
-    `;
-
-    overlayEl.appendChild(box);
-    a.dragBox = box;
-    a.dragDim = box.querySelector('.agent-drag-dim');
-
-    // Alignment guides for medium/large blocks so it looks like real UI layout alignment
-    if (rect.width > 110 || rect.height > 60) {
-      const gh = document.createElement('div');
-      gh.className = 'agent-guide-h';
-      gh.style.top = `${rect.top}px`;
-      overlayEl.appendChild(gh);
-      a.guideH = gh;
-
-      const gv = document.createElement('div');
-      gv.className = 'agent-guide-v';
-      gv.style.left = `${rect.left}px`;
-      overlayEl.appendChild(gv);
-      a.guideV = gv;
-    }
-
-    if (a.task && a.task.isText) {
-      const caret = document.createElement('span');
-      caret.className = 'swarm-typing-caret';
-      caret.style.left = `${rect.left + 2}px`;
-      caret.style.top = `${rect.top + 2}px`;
-      overlayEl.appendChild(caret);
-      a.caret = caret;
-    }
-  }
-
-  function updateAgentElement(a) {
-    a.el.style.opacity = a.visible ? '1' : '0';
-    if (a.visible) {
-      a.el.style.transform = `translate3d(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px, 0) rotate(${a.angle.toFixed(1)}deg)`;
-    }
-  }
-
-  function updateIntroPhase() {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const cx = vw * 0.5;
-    const cy = vh * 0.45;
-    const p = clamp(simTime / INTRO_DURATION, 0, 1);
-
-    for (let i = 0; i < MAX_AGENTS; i++) {
-      const a = agents[i];
-      const stream = i % 2 === 0 ? -1 : 1;
-      const idxInStream = Math.floor(i / 2);
-      const t = simTime * 2.8 - idxInStream * 0.22;
-
-      const nx = cx + stream * (70 + p * 140) + Math.cos(t * 1.4) * 55;
-      const ny = cy + Math.sin(t * 1.6 + stream * 0.8) * 85;
-
-      const vx = nx - a.x;
-      const vy = ny - a.y;
-      if (Math.hypot(vx, vy) > 0.3) {
-        a.angle = clamp((Math.atan2(vy, vx) * 180) / Math.PI + 90, -25, 25);
+    function typeElementText(el, speed) {
+      if (!savedHTMLMap.has(el)) {
+        savedHTMLMap.set(el, el.innerHTML);
       }
-      a.x = nx;
-      a.y = ny;
-      a.visible = true;
-      updateAgentElement(a);
+      const fullText = el.textContent.trim();
+      if (!fullText) return;
+
+      el.textContent = '';
+      el.classList.add('swarm-typing-caret');
+      const stepChars = Math.max(1, Math.ceil(fullText.length / 10));
+      let pos = 0;
+
+      const typeTick = () => {
+        if (!isReplaying) return;
+        pos += stepChars;
+        if (pos >= fullText.length) {
+          el.classList.remove('swarm-typing-caret');
+          if (savedHTMLMap.has(el)) {
+            el.innerHTML = savedHTMLMap.get(el);
+            savedHTMLMap.delete(el);
+          }
+          return;
+        }
+        el.textContent = fullText.slice(0, pos);
+        playTypeSound();
+        const t = setTimeout(typeTick, Math.max(18, Math.round(36 / speed)));
+        replayTimers.push(t);
+      };
+      typeTick();
     }
 
-    const statusEl = dockEl && dockEl.querySelector('#swarm-dock-status');
-    if (statusEl) statusEl.textContent = 'Clearing canvas & planning layout...';
-  }
+    function startReplay() {
+      if (isReplaying) stopReplay(false);
+      isReplaying = true;
+      clearTimers();
 
-  function findNextTaskForAgent(a) {
-    const vh = window.innerHeight;
-    let best = null;
-    let bestScore = Infinity;
+      // Scroll to top immediately to start blank-canvas rebuild from Header
+      window.scrollTo({ top: 0, behavior: 'instant' });
 
-    for (let i = 0; i < layers.length; i++) {
-      const l = layers[i];
-      if (l.claimed || l.built) continue;
-      const rect = l.el.getBoundingClientRect();
-      if (rect.bottom < -60 || rect.top > vh + 160) continue;
+      const layers = collectLayers();
+      const total = layers.length;
 
-      const dist = Math.hypot(rect.left - a.x, rect.top - a.y);
-      const topBias = Math.max(0, rect.top) * 1.1;
-      const score = topBias + dist * 0.45;
-      if (score < bestScore) {
-        bestScore = score;
-        best = l;
-      }
-    }
-    return best;
-  }
+      // Step 1: BLANK CANVAS — hide all layers completely!
+      layers.forEach(item => {
+        item.el.classList.remove('swarm-built-layer', 'swarm-wireframe-layer');
+        item.el.classList.add('swarm-blank-layer');
+      });
 
-  function updateBuildPhase(dt) {
-    const vh = window.innerHeight;
-    const vw = window.innerWidth;
+      overlay.style.display = 'block';
+      actionBtn.textContent = 'Go Live';
+      actionBtn.classList.remove('bg-brand-600', 'hover:bg-brand-500');
+      actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+      statusText.textContent = `18 agents • 0/${total}`;
 
-    let heroUnbuilt = 0;
-    for (let i = 0; i < layers.length; i++) {
-      if (!layers[i].built && layers[i].absTop < heroMaxY) {
-        heroUnbuilt++;
-      }
-    }
+      let activeRect = null;
+      moveCursors(null);
 
-    let activeCount = 0;
+      // Continuous multi-agent cursor swarm
+      cursorLoopId = setInterval(() => {
+        if (isReplaying) moveCursors(activeRect);
+      }, Math.max(140, Math.round(360 / speedMultiplier)));
 
-    for (let i = 0; i < MAX_AGENTS; i++) {
-      const a = agents[i];
+      let currentDelay = 120;
 
-      if (a.task) {
-        activeCount++;
-        const rect = a.task.el.getBoundingClientRect();
+      layers.forEach((item, idx) => {
+        const baseInterval = item.mode === 'text' ? 210 : 145;
+        const stepDelay = Math.max(45, Math.round(baseInterval / speedMultiplier));
 
-        if (a.state === 'travel') {
-          const tx = clamp(rect.left + 4, 8, vw - 24);
-          const ty = clamp(rect.top + 4, 8, vh - 24);
-          const dx = tx - a.x;
-          const dy = ty - a.y;
-          const dist = Math.hypot(dx, dy);
+        // Phase A: Draw wireframe sketch first
+        const wireTimer = setTimeout(() => {
+          if (!isReplaying) return;
+          item.el.classList.remove('swarm-blank-layer');
+          item.el.classList.add('swarm-wireframe-layer');
+          playWireframeSound();
+        }, Math.max(0, currentDelay - Math.round(90 / speedMultiplier)));
+        replayTimers.push(wireTimer);
 
-          if (dist < 12) {
-            a.x = tx;
-            a.y = ty;
-            a.angle = 0;
-            a.state = 'work';
-            a.workTime = 0;
-            a.lastSoundTick = 0;
-            const areaFactor = Math.min(0.2, (rect.width * rect.height) / 360000);
-            a.workDur = a.task.isText
-              ? clamp(0.42 + a.task.textLen * 0.0055, 0.45, 0.72)
-              : clamp(0.4 + areaFactor, 0.42, 0.64);
-            spawnWireframe(a, rect);
+        // Phase B: Build, align bounding box, type text & auto-scroll if Touring is ON
+        const buildTimer = setTimeout(() => {
+          if (!isReplaying) return;
+
+          // Touring Auto-Scroll: keep active layer comfortably in viewport
+          if (touringEnabled) {
+            const r = item.el.getBoundingClientRect();
+            if (r.top > window.innerHeight * 0.68 || r.bottom < 80) {
+              const targetY = Math.max(0, window.scrollY + r.top - window.innerHeight * 0.32);
+              window.scrollTo({ top: targetY, behavior: 'smooth' });
+            }
+          }
+
+          const rect = item.el.getBoundingClientRect();
+          activeRect = rect;
+
+          statusText.textContent = `18 agents • ${idx + 1}/${total}`;
+
+          if (rect.width > 0 && rect.height > 0) {
+            bbox.style.opacity = '1';
+            bbox.style.left = `${rect.left}px`;
+            bbox.style.top = `${rect.top}px`;
+            bbox.style.width = `${rect.width}px`;
+            bbox.style.height = `${rect.height}px`;
+            bboxTag.textContent = item.label;
+            bboxDim.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
+
+            guideH.style.opacity = '1';
+            guideH.style.top = `${rect.top}px`;
+            guideV.style.opacity = '1';
+            guideV.style.left = `${rect.left}px`;
+          }
+
+          item.el.classList.remove('swarm-wireframe-layer');
+          item.el.classList.add('swarm-built-layer');
+
+          if (item.mode === 'text') {
+            typeElementText(item.el, speedMultiplier);
           } else {
-            const step = Math.min(dist, 920 * dt);
-            a.x += (dx / dist) * step;
-            a.y += (dy / dist) * step;
-            a.angle = clamp((dx / dist) * 12, -14, 14);
-          }
-          a.visible = true;
-          updateAgentElement(a);
-        } else if (a.state === 'work') {
-          a.workTime += dt;
-          const p = clamp(a.workTime / a.workDur, 0, 1);
-          const e = 1 - Math.pow(1 - p, 2.2);
-
-          const curW = rect.width * e;
-          const curH = rect.height * e;
-
-          if (a.dragBox) {
-            a.dragBox.style.left = `${rect.left}px`;
-            a.dragBox.style.top = `${rect.top}px`;
-            a.dragBox.style.width = `${curW}px`;
-            a.dragBox.style.height = `${curH}px`;
-            if (a.dragDim) {
-              a.dragDim.textContent = `${Math.round(curW)} × ${Math.round(curH)}`;
-            }
-          }
-          if (a.guideH) a.guideH.style.top = `${rect.top}px`;
-          if (a.guideV) a.guideV.style.left = `${rect.left}px`;
-
-          if (a.task.isText) {
-            // Progressive typing reveal via clip-path + moving I-beam caret
-            a.task.el.classList.remove('swarm-blank-layer');
-            a.task.el.classList.add('swarm-typing-layer');
-            const pctRight = Math.max(0, 100 - e * 100);
-            a.task.el.style.clipPath = `inset(0 ${pctRight.toFixed(1)}% 0 0)`;
-
-            if (a.caret) {
-              a.caret.style.left = `${rect.left + Math.min(rect.width - 2, curW)}px`;
-              a.caret.style.top = `${rect.top + Math.min(rect.height - 14, 4)}px`;
-            }
-
-            if (p - a.lastSoundTick > 0.22) {
-              a.lastSoundTick = p;
-              playKeyTick();
-            }
-          } else if (p > 0.72 && a.task.el.classList.contains('swarm-blank-layer')) {
-            a.task.el.classList.remove('swarm-blank-layer');
-            a.task.el.classList.add('swarm-built-layer');
+            playSnapSound();
           }
 
-          a.x = clamp(rect.left + curW, 8, vw - 20);
-          a.y = clamp(rect.top + curH, 8, vh - 20);
-          a.angle = -6;
-          a.visible = true;
-          updateAgentElement(a);
+          moveCursors(rect);
 
-          if (p >= 1) {
-            a.task.el.classList.remove('swarm-blank-layer', 'swarm-typing-layer');
-            a.task.el.style.clipPath = '';
-            a.task.el.classList.add('swarm-built-layer');
-            a.task.built = true;
-            builtCount++;
-            cleanupAgentArtifacts(a);
-            playSnapPop(460 + (builtCount % 6) * 45);
-            a.task = null;
-            a.state = 'idle';
+          if (idx === total - 1) {
+            const doneTimer = setTimeout(() => stopReplay(true, total), Math.round(450 / speedMultiplier));
+            replayTimers.push(doneTimer);
           }
-        }
+        }, currentDelay);
+
+        replayTimers.push(buildTimer);
+        currentDelay += stepDelay;
+      });
+    }
+
+    // Button Controls
+    actionBtn.addEventListener('click', () => {
+      ensureAudio();
+      if (isReplaying) {
+        stopReplay(false);
       } else {
-        const nextTask = findNextTaskForAgent(a);
-        if (nextTask) {
-          nextTask.claimed = true;
-          a.task = nextTask;
-          a.state = 'travel';
-          a.visible = true;
-          activeCount++;
-          updateAgentElement(a);
-        } else {
-          // No available task in current viewport -> hide cursor cleanly
-          a.visible = false;
-          updateAgentElement(a);
-        }
+        startReplay();
       }
-    }
-
-    // Continuous smooth Tour auto-scroll once Hero settles
-    const heroDone = heroUnbuilt === 0 || simTime > 3.8;
-    if (tourEnabled && heroDone) {
-      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      if (scrollFloatY < maxScroll) {
-        scrollFloatY = Math.min(maxScroll, scrollFloatY + TOUR_SCROLL_SPEED * dt);
-        window.scrollTo({ top: scrollFloatY, behavior: 'instant' });
-      }
-    }
-
-    const statusEl = dockEl && dockEl.querySelector('#swarm-dock-status');
-    if (statusEl) {
-      statusEl.textContent = `${activeCount || MAX_AGENTS} designers • ${builtCount}/${layers.length} layers`;
-    }
-
-    if (builtCount >= layers.length) {
-      phase = 'outro';
-      phaseTimer = 0;
-      playDoneChord();
-    }
-  }
-
-  function updateOutroPhase(dt) {
-    phaseTimer += dt;
-    const p = clamp(phaseTimer / OUTRO_DURATION, 0, 1);
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    for (let i = 0; i < MAX_AGENTS; i++) {
-      const a = agents[i];
-      cleanupAgentArtifacts(a);
-      const ang = simTime * 2.8 + (i / MAX_AGENTS) * Math.PI * 2;
-      const rad = 80 + p * 130;
-      a.x = vw * 0.5 + Math.cos(ang) * rad;
-      a.y = vh * 0.5 + Math.sin(ang) * rad * 0.6;
-      a.angle = 0;
-      a.el.style.opacity = `${(1 - p).toFixed(2)}`;
-      a.el.style.transform = `translate3d(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px, 0)`;
-    }
-
-    if (p >= 1) {
-      finishReplay(false);
-    }
-  }
-
-  function tick(ts) {
-    if (!isReplaying) return;
-    if (!lastTs) lastTs = ts;
-    const rawDt = Math.min(0.05, Math.max(0.001, (ts - lastTs) / 1000));
-    lastTs = ts;
-
-    const dt = rawDt * speedMultiplier;
-    simTime += dt;
-
-    if (phase === 'intro') {
-      updateIntroPhase();
-      if (simTime >= INTRO_DURATION) {
-        phase = 'build';
-      }
-    } else if (phase === 'build') {
-      updateBuildPhase(dt);
-    } else if (phase === 'outro') {
-      updateOutroPhase(dt);
-    }
-
-    if (isReplaying) {
-      rafId = requestAnimationFrame(tick);
-    }
-  }
-
-  function finishReplay(interrupted) {
-    isReplaying = false;
-    if (rafId) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
-    }
-
-    document.documentElement.style.scrollBehavior = '';
-
-    layers.forEach((l) => {
-      l.el.classList.remove('swarm-blank-layer', 'swarm-typing-layer');
-      l.el.style.clipPath = '';
-      l.el.classList.add('swarm-built-layer');
     });
 
-    agents.forEach((a) => cleanupAgentArtifacts(a));
-    if (overlayEl) {
-      overlayEl.remove();
-      overlayEl = null;
-    }
-
-    if (dockEl) {
-      const statusEl = dockEl.querySelector('#swarm-dock-status');
-      const actionBtn = dockEl.querySelector('#swarm-action-btn');
-      if (statusEl) {
-        statusEl.textContent = interrupted
-          ? `Live • ${layers.length} layers`
-          : `Rebuilt by ${MAX_AGENTS} designers in ${simTime.toFixed(1)}s`;
-      }
-      if (actionBtn) {
-        actionBtn.textContent = 'Replay';
-      }
-    }
-  }
-
-  function startSwarmReplay() {
-    if (isReplaying) finishReplay(true);
-
-    document.documentElement.style.scrollBehavior = 'auto';
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    scrollFloatY = 0;
-
-    layers = collectLayers();
-    builtCount = 0;
-    heroMaxY = Math.max(680, window.innerHeight * 0.92);
-
-    layers.forEach((l) => {
-      l.el.classList.remove('swarm-built-layer', 'swarm-typing-layer');
-      l.el.style.clipPath = '';
-      l.el.classList.add('swarm-blank-layer');
+    tourBtn.addEventListener('click', () => {
+      touringEnabled = !touringEnabled;
+      tourBtn.className = touringEnabled
+        ? 'px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors'
+        : 'px-2.5 py-0.5 rounded-full bg-[#1a1f2e] text-gray-500 border border-[#2d364d] hover:text-gray-300 transition-colors';
     });
 
-    if (miniPillEl) miniPillEl.style.display = 'none';
+    speedBtn.addEventListener('click', () => {
+      speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 3 : 1;
+      speedBtn.textContent = `${speedMultiplier}x`;
+      if (isReplaying) {
+        // Restart cleanly at new speed
+        startReplay();
+      }
+    });
 
-    createOverlay();
-    createDock();
-    createAgentPool();
+    soundBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      if (soundEnabled) ensureAudio();
+      soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+      soundBtn.classList.toggle('text-brand-400', soundEnabled);
+      soundBtn.classList.toggle('border-brand-500', soundEnabled);
+    });
 
-    simTime = 0;
-    phaseTimer = 0;
-    lastTs = 0;
-    phase = 'intro';
-    isReplaying = true;
+    minimizeBtn.addEventListener('click', () => {
+      if (isReplaying) stopReplay(false);
+      dock.style.display = 'none';
+      miniPill.classList.remove('hidden');
+      miniPill.classList.add('flex');
+    });
 
-    rafId = requestAnimationFrame(tick);
-  }
+    miniPill.addEventListener('click', () => {
+      miniPill.classList.add('hidden');
+      miniPill.classList.remove('flex');
+      dock.style.display = 'flex';
+      startReplay();
+    });
 
-  window.startSwarmReplay = startSwarmReplay;
-
-  document.addEventListener('DOMContentLoaded', () => {
+    // Auto-start full blank-canvas build replay on load
     setTimeout(() => {
-      startSwarmReplay();
-    }, 250);
-  });
+      startReplay();
+    }, 300);
+  }
+
+  document.addEventListener('DOMContentLoaded', initSwarmReplay);
 })();

@@ -468,12 +468,23 @@
     // On arrival → pick new random target spread across FULL viewport.
     let lastPhysicsTime = 0;
 
-    // Pick a new target anywhere on viewport (makes agents roam freely)
+    // Pick next working point around the track's current element (no random off-element drift)
     function pickNextTarget(a) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      a.tx = 20 + Math.random() * (vw - 110);
-      a.ty = 20 + Math.random() * (vh - 70);
+      const tr = a.trackIdx >= 0 ? tracks[a.trackIdx] : null;
+      const r  = tr && tr.lastRect;
+      if (r && r.width > 0 && r.height > 0) {
+        const padX = Math.max(18, r.width * 0.12);
+        const padY = Math.max(12, r.height * 0.15);
+        const rx = r.left + Math.random() * r.width  + (Math.random() - 0.5) * padX;
+        const ry = r.top  + Math.random() * r.height + (Math.random() - 0.5) * padY;
+        a.tx = Math.max(15, Math.min(vw - 95, rx));
+        a.ty = Math.max(15, Math.min(vh - 65, ry));
+      } else {
+        a.tx = 20 + Math.random() * (vw - 110);
+        a.ty = 20 + Math.random() * (vh - 70);
+      }
     }
 
     // Rotate only the pointer arrow SVG smoothly toward its flight heading
@@ -565,6 +576,7 @@
     // ── Update a track's bbox to a new element ────────────────────────────
     function updateTrackOverlay(tr, rect, label) {
       if (rect.width <= 0 || rect.height <= 0) return;
+      tr.lastRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
       tr.bbox.style.opacity = '1';
       tr.bbox.style.left    = `${rect.left}px`;
       tr.bbox.style.top     = `${rect.top}px`;
@@ -574,31 +586,27 @@
       tr.bboxDim.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
     }
 
-    // ── Assign an element to a track — set stable a.tx/a.ty for each agent ─
-    // Agents get targets spread across the FULL viewport so they look scattered.
-    // Target = element center biased toward agent's natural screen column.
+    // ── Assign an element to a track — target agents directly onto the element ─
     function assignToTrack(tr, item, rect) {
       tr.currentEl = item.el;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const ex = rect.left + rect.width  / 2;
-      const ey = rect.top  + rect.height / 2;
+      const w  = Math.max(rect.width,  20);
+      const h  = Math.max(rect.height, 16);
+      tr.lastRect = { left: rect.left, top: rect.top, width: w, height: h };
 
-      tr.agentIndices.forEach((aIdx) => {
-        const a = agents[aIdx];
-        // Spread all 14-18 agents across a 4x5 viewport grid so they never clump in one corner
-        const col = aIdx % 4;
-        const row = Math.floor(aIdx / 4) % 5;
-        const zoneX = ((col + 0.5) / 4) * vw;
-        const zoneY = ((row + 0.5) / 5) * vh;
-        // Blend 35% element position + 65% full-viewport spread + jitter
-        const tx = ex * 0.35 + zoneX * 0.65 + (Math.random() - 0.5) * vw * 0.22;
-        const ty = ey * 0.35 + zoneY * 0.65 + (Math.random() - 0.5) * vh * 0.20;
-        a.tx = Math.max(20, Math.min(vw - 100, tx));
-        a.ty = Math.max(20, Math.min(vh - 70,  ty));
+      const count = Math.max(1, tr.agentIndices.length);
+      tr.agentIndices.forEach((aIdx, slot) => {
+        const a  = agents[aIdx];
+        // Spread agents evenly across this element's own bounding box
+        const ox = (slot + 0.5 + (Math.random() - 0.5) * 0.45) / count;
+        const oy = 0.2 + ((slot * 0.37) % 0.6) + (Math.random() - 0.5) * 0.25;
+        const tx = rect.left + ox * w + (Math.random() - 0.5) * 24;
+        const ty = rect.top  + oy * h + (Math.random() - 0.5) * 18;
+        a.tx = Math.max(15, Math.min(vw - 95, tx));
+        a.ty = Math.max(15, Math.min(vh - 65, ty));
       });
 
-      // Per-track offsets kept for compat (unused by new physicsLoop)
       tr.offsets = tr.agentIndices.map(() => ({ ox: 0.5, oy: 0.5 }));
     }
 
@@ -619,17 +627,32 @@
         const dt = Math.min((now - lastScrollTime) / 1000, 0.05);
         lastScrollTime = now;
         const diff = scrollTarget - scrollCurrent;
+        const vh   = window.innerHeight;
+        let px;
         if (Math.abs(diff) < 0.8) {
+          px = diff;
           scrollCurrent = scrollTarget;
           window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
           scrollRafId = null;
-          return;
+        } else {
+          // Smooth exponential ease-out — zero sudden speed jumps or jitter
+          px = diff * Math.min(1, dt * 6.5);
+          scrollCurrent += px;
+          window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
+          scrollRafId = requestAnimationFrame(step);
         }
-        // Smooth exponential ease-out — zero sudden speed jumps or jitter
-        const px = diff * Math.min(1, dt * 6.5);
-        scrollCurrent += px;
-        window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
-        scrollRafId = requestAnimationFrame(step);
+        // Keep agent targets & bboxes locked to scrolled elements without calling getBCR in RAF
+        if (px !== 0 && !vortexMode) {
+          agents.forEach(a => {
+            if (a.trackIdx >= 0) a.ty = Math.max(15, Math.min(vh - 65, a.ty - px));
+          });
+          tracks.forEach(tr => {
+            if (tr.lastRect && tr.currentEl) {
+              tr.lastRect.top -= px;
+              tr.bbox.style.top = `${tr.lastRect.top}px`;
+            }
+          });
+        }
       }
       scrollRafId = requestAnimationFrame(step);
     }

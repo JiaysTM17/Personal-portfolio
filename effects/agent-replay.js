@@ -434,6 +434,8 @@
       let heroBuilt = 0;
       let peakOrCurrentActive = 14;
       let currentScrollSpeed = 0;
+      let introTime = 0;
+      const INTRO_DUR = 1.6; // 1-2s thinking/planning phase on blank canvas
       lastTs = 0;
 
       function tick(ts) {
@@ -445,6 +447,30 @@
         const dt = rawDt * speedMultiplier;
         const vh = window.innerHeight;
         const vw = window.innerWidth;
+
+        // Phase 0: 1.6s Blank-Canvas "Thinking" Intro with 14 active cursors weaving smoothly
+        if (introTime < INTRO_DUR) {
+          introTime += dt;
+          statusText.textContent = `14 agents • Planning...`;
+          for (let i = 0; i < MAX_AGENTS; i++) {
+            const a = agents[i];
+            if (i >= MIN_AGENTS) {
+              a.cur.style.opacity = '0';
+              continue;
+            }
+            const stream = i % 2 === 0 ? -1 : 1;
+            const idxInStream = Math.floor(i / 2);
+            const t = introTime * 2.7 - idxInStream * 0.22;
+            const nx = vw * 0.5 + stream * (95 + 75 * Math.sin(t * 0.9)) + Math.cos(t * 1.6) * 48;
+            const ny = vh * 0.46 + Math.sin(t * 1.4 + stream * 0.8) * 95 + Math.cos(t * 0.7) * 26;
+            a.x = clamp(nx, 20, vw - 60);
+            a.y = clamp(ny, 20, vh - 40);
+            a.cur.style.opacity = '1';
+            a.cur.style.transform = `translate3d(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px, 0)`;
+          }
+          rafId = requestAnimationFrame(tick);
+          return;
+        }
 
         // Count unclaimed & unfinished layers in/near current viewport
         let unbuiltVisible = 0;
@@ -513,7 +539,9 @@
                   playWireframeSound();
                 }
               } else {
-                const step = Math.min(dist, 820 * dt);
+                // Fast approach when far, smooth brake when close
+                const speed = dist > 90 ? Math.max(1100, dist * 8.5) : Math.max(260, dist * 6.5);
+                const step = Math.min(dist, speed * dt);
                 a.x += (dx / dist) * step;
                 a.y += (dy / dist) * step;
               }
@@ -590,9 +618,10 @@
                 a.state = 'travel';
                 workingCount++;
                 if (a.cur.style.opacity === '0') {
+                  // Enter briskly near the target or edge instead of crawling from a corner
                   const r = nextTask.el.getBoundingClientRect();
-                  a.x = clamp(r.left + (Math.random() > 0.5 ? 140 : -140), 20, vw - 40);
-                  a.y = clamp(r.top + 60, 20, vh - 30);
+                  a.x = clamp(r.left + (Math.random() > 0.5 ? 90 : -90), 16, vw - 40);
+                  a.y = clamp(r.top + (Math.random() > 0.5 ? 40 : -40), 16, vh - 30);
                 }
                 a.cur.style.opacity = '1';
                 a.cur.style.transform = `translate3d(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px, 0)`;
@@ -617,20 +646,19 @@
             let accelRate = 7.0;
 
             if (builtCount >= total) {
-              desiredSpeed = 540;
-              accelRate = 10.0;
-            } else if (unbuiltVisible <= 5 || leadTop > vh * 0.48) {
-              // Current screen nearly done or unbuilt layers are only in bottom half -> scroll FAST to fill whole screen!
               desiredSpeed = 620;
-              accelRate = 14.0;
-            } else if (unbuiltVisible >= 10 && leadTop <= vh * 0.28) {
-              // Fresh unbuilt layers fill top, middle & bottom -> creep very slowly while agents work across full screen
-              desiredSpeed = 14;
-              accelRate = 8.0;
+              accelRate = 12.0;
+            } else if (unbuiltVisible <= 4 || leadTop > vh * 0.40) {
+              // Screen nearly done OR unbuilt layers only sit in lower half -> dash fast to fill ENTIRE screen!
+              desiredSpeed = 680;
+              accelRate = 16.0;
+            } else if (unbuiltVisible >= 8 && leadTop <= vh * 0.24) {
+              // Unbuilt layers fill the whole screen top-to-bottom -> creep ultra-slowly so agents spread evenly
+              desiredSpeed = 10;
+              accelRate = 9.0;
             } else {
-              // Mid-build transition
-              desiredSpeed = 65;
-              accelRate = 6.5;
+              desiredSpeed = 48;
+              accelRate = 7.0;
             }
 
             currentScrollSpeed += (desiredSpeed - currentScrollSpeed) * Math.min(1, accelRate * rawDt);

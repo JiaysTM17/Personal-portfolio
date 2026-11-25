@@ -13,7 +13,7 @@
   const MIN_AGENTS    = 14;
   const MAX_AGENTS    = 18;
   const AGENTS_TOTAL  = 18;
-  const INTRO_DUR     = 1700;
+  const INTRO_DUR     = 2800; // romantic unhurried intro
 
   const AGENT_COLORS = [
     '#3b82f6','#8b5cf6','#ec4899','#f59e0b',
@@ -299,19 +299,26 @@
       const cur   = document.createElement('div');
       cur.className = 'agent-cursor';
       cur.style.cssText = 'opacity:0;position:fixed;pointer-events:none;z-index:9999;';
-      cur.innerHTML = `${createPointerSVG(color)}<div class="agent-cursor-label" style="background:${color};">${AGENT_NAMES[i]}</div>`;
+      cur.innerHTML = `<span class="agent-arrow" style="display:inline-block;width:16px;height:16px;transform-origin:center center;">${createPointerSVG(color)}</span><div class="agent-cursor-label" style="background:${color};">${AGENT_NAMES[i]}</div>`;
       overlay.appendChild(cur);
+      const arrowEl = cur.querySelector('.agent-arrow');
+      // 2-lane clockwise schooling streams (inner & outer) like ocean waves
+      const lane = i % 2;
+      const laneIdx = Math.floor(i / 2);
+      const laneTotal = Math.ceil(AGENTS_TOTAL / 2);
       agents.push({
         cur,
+        arrowEl,
         x: window.innerWidth  * 0.5,
         y: window.innerHeight * 0.5,
         tx: 0, ty: 0,
+        angle: 0,     // smoothed heading rotation (deg)
         trackIdx: -1, // -1 = no track = hidden
         agentSlot: 0, // which slot within the track
-        // Schooling-fish / whirlpool vortex params around cursor
-        vortexR: 46 + (i % 6) * 18 + (i % 3) * 6,
-        vortexSpeed: 2.2 + (5 - (i % 6)) * 0.36,
-        vortexPhase: (i / AGENTS_TOTAL) * Math.PI * 2 + (i % 3) * 0.35,
+        // Clockwise schooling-fish / ocean-wave params around cursor
+        vortexR: lane === 0 ? 66 + (i % 3) * 10 : 114 + (i % 3) * 12,
+        vortexSpeed: lane === 0 ? 1.85 : 1.45,
+        vortexPhase: (laneIdx / laneTotal) * Math.PI * 2 + lane * 0.32,
         color,
       });
     }
@@ -460,6 +467,17 @@
       a.ty = 20 + Math.random() * (vh - 70);
     }
 
+    // Rotate only the pointer arrow SVG smoothly toward its flight heading
+    function updateArrowHeading(a, vx, vy, dt) {
+      if (!a.arrowEl) return;
+      if (Math.hypot(vx, vy) < 0.15) return;
+      // SVG tip points upper-left (~ -127.4 deg), so +127.4 aligns tip with (vx, vy)
+      const targetDeg = (Math.atan2(vy, vx) * 180 / Math.PI) + 127.4;
+      const diff = ((targetDeg - a.angle + 540) % 360) - 180;
+      a.angle += diff * Math.min(1, dt * 14);
+      a.arrowEl.style.transform = `rotate(${a.angle.toFixed(1)}deg)`;
+    }
+
     function physicsLoop(now) {
       if (!isReplaying && !isCompleted) return;
       rafId = requestAnimationFrame(physicsLoop);
@@ -477,23 +495,32 @@
           return;
         }
 
+        let moveX = 0, moveY = 0;
+
         if (vortexMode) {
-          // Schooling-fish / wave whirlpool around user's mouse cursor
+          // Clockwise tail-to-nose schooling stream with gentle ocean-wave swell around cursor
           const ang  = a.vortexPhase + tSec * a.vortexSpeed;
-          const wave = Math.sin(tSec * 3.6 - i * 0.52 + ang * 1.4) * 18;
+          const wave = Math.sin(tSec * 2.1 + ang * 2 - i * 0.35) * 12;
           const r    = a.vortexR + wave;
-          const vx   = mouseX + Math.cos(ang) * r + Math.sin(tSec * 2.1 + i) * 10;
-          const vy   = mouseY + Math.sin(ang) * r * 0.72 + Math.cos(tSec * 2.5 + i * 0.7) * 14;
+          const vx   = mouseX + Math.cos(ang) * r;
+          const vy   = mouseY + Math.sin(ang) * r * 0.94;
 
           const dx   = vx - a.x;
           const dy   = vy - a.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 0.5) {
-            const spd  = Math.max(260, dist * 7.5);
+            const spd  = Math.max(240, dist * 7.5);
             const step = Math.min(dist, spd * dt);
-            a.x += (dx / dist) * step;
-            a.y += (dy / dist) * step;
+            moveX = (dx / dist) * step;
+            moveY = (dy / dist) * step;
+            a.x += moveX;
+            a.y += moveY;
           }
+          // Aim nose along clockwise tangent when close to orbit, or flight vector when approaching
+          const tanX = -Math.sin(ang);
+          const tanY =  Math.cos(ang) * 0.94;
+          const blend = dist > 45 ? 0.25 : 0.85;
+          updateArrowHeading(a, moveX * (1 - blend) + tanX * blend, moveY * (1 - blend) + tanY * blend, dt);
         } else {
           // Building mode: use stable a.tx / a.ty — no getBoundingClientRect() here
           const dx   = a.tx - a.x;
@@ -510,8 +537,11 @@
               ? Math.max(1000, dist * 8)
               : Math.max(220, dist * 5.5);
             const step = Math.min(dist, spd * dt);
-            a.x += (dx / dist) * step;
-            a.y += (dy / dist) * step;
+            moveX = (dx / dist) * step;
+            moveY = (dy / dist) * step;
+            a.x += moveX;
+            a.y += moveY;
+            updateArrowHeading(a, moveX, moveY, dt);
           }
         }
 
@@ -608,22 +638,25 @@
       const vh = window.innerHeight;
       const maxR = Math.hypot(vw * 0.48, vh * 0.46);
 
-      // Seed each agent scattered across the full viewport perimeter/corners
+      // Seed each agent scattered across the full viewport perimeter
       const ipos = agents.map((a, i) => {
-        const baseAng = (i / AGENTS_TOTAL) * Math.PI * 2 + (i % 3) * 0.28;
-        const startR  = maxR * (0.62 + (i % 4) * 0.11);
-        const coreR   = 26 + (i % 5) * 15; // staggered inner vortex radii
+        const baseAng = (i / AGENTS_TOTAL) * Math.PI * 2 + (i % 2) * 0.25;
+        const startR  = maxR * (0.64 + (i % 3) * 0.12);
+        const coreR   = (i % 2 === 0 ? 64 : 112) + (i % 3) * 10;
         const x = Math.max(15, Math.min(vw - 95, vw * 0.5 + Math.cos(baseAng) * startR));
-        const y = Math.max(15, Math.min(vh - 65, vh * 0.5 + Math.sin(baseAng) * startR * 0.82));
+        const y = Math.max(15, Math.min(vh - 65, vh * 0.5 + Math.sin(baseAng) * startR * 0.88));
         a.cur.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
         a.cur.style.opacity   = '1';
         return { x, y, baseAng, startR, coreR };
       });
 
       let introStart = null;
+      let lastIntroNow = performance.now();
       function introFrame(now) {
         if (!isReplaying) { introRafId = null; return; }
         if (!introStart) introStart = now;
+        const dt      = Math.min((now - lastIntroNow) / 1000, 0.05);
+        lastIntroNow  = now;
         const elapsed = now - introStart;
         const frac    = Math.min(elapsed / INTRO_DUR, 1);
         const vw2 = window.innerWidth;
@@ -635,34 +668,37 @@
           const ip = ipos[i];
           let r, ang;
           if (frac < 0.78) {
-            // Phase 1: inward whirlpool spiral with wave undulation
+            // Phase 1: romantic slow-motion clockwise glide inward with soft ocean-wave swell
             const p = frac / 0.78;
-            const ease = p * p * (3 - 2 * p); // smoothstep
-            const wave = Math.sin(p * Math.PI * 3 + i * 0.65) * 26 * (1 - p * 0.5);
+            const ease = p * p * (3 - 2 * p);
+            const wave = Math.sin(p * Math.PI * 2 + i * 0.5) * 18 * (1 - p * 0.4);
             r   = ip.startR * (1 - ease) + ip.coreR * ease + wave;
-            ang = ip.baseAng + p * 5.2 + (1 - r / ip.startR) * 2.4;
+            ang = ip.baseAng + ease * Math.PI * 2.2;
           } else {
-            // Phase 2: rapid burst outward across the screen to start building
+            // Phase 2: graceful glide outward to spread across viewport
             const b = (frac - 0.78) / 0.22;
             const easeOut = 1 - Math.pow(1 - b, 2);
-            r   = ip.coreR + easeOut * maxR * 0.78;
-            ang = ip.baseAng + 7.6 + b * 1.4;
+            r   = ip.coreR + easeOut * maxR * 0.72;
+            ang = ip.baseAng + Math.PI * 2.2 + b * 0.9;
           }
 
           const nx = Math.max(12, Math.min(vw2 - 95, cx + Math.cos(ang) * r));
-          const ny = Math.max(12, Math.min(vh2 - 65, cy + Math.sin(ang) * r * 0.80));
+          const ny = Math.max(12, Math.min(vh2 - 65, cy + Math.sin(ang) * r * 0.88));
 
-          // Smoothly follow spiral target
           const dx = nx - ip.x;
           const dy = ny - ip.y;
           const d  = Math.sqrt(dx * dx + dy * dy);
+          let moveX = dx, moveY = dy;
           if (d > 1) {
-            const spd = Math.min(d, Math.max(550, d * 9) / 60);
-            ip.x += (dx / d) * spd;
-            ip.y += (dy / d) * spd;
+            const spd = Math.min(d, Math.max(360, d * 6) * dt);
+            moveX = (dx / d) * spd;
+            moveY = (dy / d) * spd;
+            ip.x += moveX;
+            ip.y += moveY;
           } else {
             ip.x = nx; ip.y = ny;
           }
+          updateArrowHeading(a, moveX, moveY, dt);
           a.cur.style.transform = `translate3d(${ip.x.toFixed(1)}px,${ip.y.toFixed(1)}px,0)`;
           a.cur.style.opacity   = '1';
         });

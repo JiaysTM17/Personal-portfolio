@@ -1,20 +1,15 @@
-// Swarm Rebuild — 4 Parallel Work Tracks (c1705b1 base + jitter-free + free-roam)
-// Fixes applied on top of c1705b1:
-//  1. ZERO getBoundingClientRect() in RAF → no jitter (use cached a.tx/a.ty)
-//  2. Section-based layer split (top/mid-top/mid-bot/bottom) → agents spread Y
-//  3. Agents roam freely across full viewport when idle (not locked to element bbox)
-//  4. Dynamic 14-18 agents (varies every 35 layers built)
-//  5. Idle agents (no task) wander full screen — never stand still, never hidden unless truly no work
+// Swarm Rebuild — 4 Parallel Work Tracks
+// Each track has its own red guide lines + bbox + agent group.
+// Agents without a track are hidden. No cursor ever idles visibly.
 
 (function () {
   'use strict';
 
   // ─── Constants ───────────────────────────────────────────────────────────
-  const NUM_TRACKS    = 4;    // parallel work tracks
-  const MIN_AGENTS    = 14;   // dynamic agent count range
-  const MAX_AGENTS    = 18;
+  const NUM_TRACKS    = 4;   // parallel work tracks (each has its own red guide)
   const AGENTS_TOTAL  = 18;
-  const INTRO_DUR     = 1700; // ms blank-canvas intro
+  const AGENTS_TRACK  = 3;   // agents per track (3×4=12 active, rest hidden)
+  const INTRO_DUR     = 1700; // ms blank-canvas thinking intro
 
   const AGENT_COLORS = [
     '#3b82f6','#8b5cf6','#ec4899','#f59e0b',
@@ -257,10 +252,9 @@
         cur,
         x: window.innerWidth  * 0.5,
         y: window.innerHeight * 0.5,
-        tx: 0, ty: 0,       // stable target — ONLY updated outside RAF
-        trackIdx: -1,       // -1 = no track = hidden
-        agentSlot: 0,       // which slot within the track (0,1,2)
-        wanderTimer: 0,     // ms since last wander-target pick
+        tx: 0, ty: 0,
+        trackIdx: -1, // -1 = no track = hidden
+        agentSlot: 0, // which slot within the track (0,1,2)
         color,
       });
     }
@@ -337,8 +331,8 @@
       actionBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
       actionBtn.classList.add('bg-brand-600', 'hover:bg-brand-500');
       statusText.textContent = completed
-        ? `${total} layers • done`
-        : `${MIN_AGENTS} agents • Live`;
+        ? `${NUM_TRACKS * AGENTS_TRACK} agents • ${total}/${total} layers`
+        : `${NUM_TRACKS * AGENTS_TRACK} agents • Live`;
       document.documentElement.style.scrollBehavior = '';
     }
 
@@ -365,20 +359,11 @@
       typeTick();
     }
 
-    // ── 60fps physics loop — ZERO getBoundingClientRect() ─────────────────
-    // Agents move toward stable a.tx / a.ty which are computed ONCE at build
-    // time (in assignToTrack / updateTrackOverlay). NOT recalculated per frame.
-    // On arrival → agent picks a NEW free-roam target anywhere on screen.
+    // ── 60fps physics loop ─────────────────────────────────────────────────
+    // Each agent tracks its assigned track's currentEl.
+    // If track.currentEl is null → agent is hidden.
+    // On arrival at target → pick NEW position within same rect (keep moving).
     let lastPhysicsTime = 0;
-
-    // Pick a random target anywhere on the visible viewport (free roam)
-    function pickFreeRoamTarget(a) {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      a.tx = 20 + Math.random() * (vw - 110);
-      a.ty = 20 + Math.random() * (vh - 70);
-      a.wanderTimer = 0;
-    }
 
     function physicsLoop(now) {
       if (!isReplaying) return;
@@ -396,75 +381,67 @@
           a.cur.style.opacity = '0';
           return;
         }
+        const tr = tracks[tIdx];
+        if (!tr.currentEl) {
+          a.cur.style.opacity = '0';
+          return;
+        }
 
-        // Target is a.tx / a.ty — set at build time, NOT recalculated here
-        const dx   = a.tx - a.x;
-        const dy   = a.ty - a.y;
+        // Live rect (stays in sync with Touring scroll)
+        const rect = tr.currentEl.getBoundingClientRect();
+
+        // Target = stable per-agent offset within the rect
+        const off = tr.offsets[a.agentSlot] || { ox: 0.5, oy: 0.5 };
+        const rawTx = rect.left + off.ox * Math.max(rect.width,  10);
+        const rawTy = rect.top  + off.oy * Math.max(rect.height, 10);
+        const tx = Math.max(10, Math.min(vw - 90, rawTx));
+        const ty = Math.max(10, Math.min(vh - 60, rawTy));
+
+        const dx   = tx - a.x;
+        const dy   = ty - a.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < 6) {
-          // Arrived — pick a new free-roam target so cursor keeps wandering
-          a.x = a.tx; a.y = a.ty;
-          pickFreeRoamTarget(a);
+        if (dist < 5) {
+          // Arrived — pick a new random spot within the same rect so cursor keeps moving
+          a.x = tx; a.y = ty;
+          tr.offsets[a.agentSlot] = {
+            ox: 0.05 + Math.random() * 0.90,
+            oy: 0.05 + Math.random() * 0.90,
+          };
         } else {
-          // Ease-out approach: fast far away, smooth in final 70px
-          let speed;
-          if (dist > 70) {
-            speed = Math.max(900, dist * 7);
-          } else {
-            // linear ease-out: 900→200 over last 70px
-            speed = 200 + (dist / 70) * 700;
-          }
-          const step = Math.min(dist, speed * dt);
+          // Fast approach → smooth brake
+          const pxPerSec = dist > 80
+            ? Math.max(1100, dist * 8.5)
+            : Math.max(260,  dist * 6.5);
+          const step = Math.min(dist, pxPerSec * dt);
           a.x += (dx / dist) * step;
           a.y += (dy / dist) * step;
         }
-
-        // Clamp to viewport
-        a.x = Math.max(10, Math.min(vw - 90, a.x));
-        a.y = Math.max(10, Math.min(vh - 60, a.y));
 
         a.cur.style.transform = `translate3d(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px,0)`;
         a.cur.style.opacity   = '1';
       });
     }
 
-    // ── Update a track's bbox to a new element ────────────────────────────
-    // Called at build time only. Sets stable a.tx/a.ty for each agent on this track.
-    function updateTrackOverlay(tr, rect, label, trIdx) {
+    // ── Update a track's guide lines + bbox to a new element ──────────────
+    function updateTrackOverlay(tr, rect, label) {
       if (rect.width <= 0 || rect.height <= 0) return;
-      // Individual property assignment — no cssText += (avoids layout thrashing)
-      tr.bbox.style.opacity = '1';
-      tr.bbox.style.left    = `${rect.left}px`;
-      tr.bbox.style.top     = `${rect.top}px`;
-      tr.bbox.style.width   = `${rect.width}px`;
-      tr.bbox.style.height  = `${rect.height}px`;
+      tr.bbox.style.cssText += `
+        opacity:1;left:${rect.left}px;top:${rect.top}px;
+        width:${rect.width}px;height:${rect.height}px;
+      `;
       tr.bboxTag.textContent = label;
       tr.bboxDim.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
-
-      // Set STABLE targets for agents on this track (read once, used every frame)
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      tr.agentIndices.forEach((aIdx, slot) => {
-        const a   = agents[aIdx];
-        const off = tr.offsets[slot] || { ox: 0.5, oy: 0.5 };
-        // Blend: 50% element position + 50% free position on screen → cursor is near element but not stuck in bbox
-        const ex = rect.left + off.ox * Math.max(rect.width, 10);
-        const ey = rect.top  + off.oy * Math.max(rect.height, 10);
-        // Add random viewport spread: cursor can be anywhere within ±40% of screen from element
-        const sx = ex + (Math.random()-0.5) * vw * 0.35;
-        const sy = ey + (Math.random()-0.5) * vh * 0.30;
-        a.tx = Math.max(10, Math.min(vw - 90, sx));
-        a.ty = Math.max(10, Math.min(vh - 60, sy));
-      });
+      tr.guideH.style.cssText += `opacity:1;top:${rect.top}px;`;
+      tr.guideV.style.cssText += `opacity:1;left:${rect.left}px;`;
     }
 
     // ── Assign an element to a track (randomize stable agent offsets) ──────
     function assignToTrack(tr, item) {
       tr.currentEl = item.el;
-      tr.offsets = Array.from({ length: tr.agentIndices.length }, (_, slot) => ({
-        // Spread agents across the element width
-        ox: (slot + 0.5 + (Math.random() - 0.5) * 0.6) / Math.max(1, tr.agentIndices.length),
+      tr.offsets = Array.from({ length: AGENTS_TRACK }, (_, slot) => ({
+        // Spread agents horizontally across the element
+        ox: (slot + 0.5 + (Math.random() - 0.5) * 0.6) / AGENTS_TRACK,
         oy: 0.1 + Math.random() * 0.8,
       }));
     }
@@ -614,59 +591,35 @@
       actionBtn.textContent = 'Go Live';
       actionBtn.classList.remove('bg-brand-600', 'hover:bg-brand-500');
       actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-      statusText.textContent = `${MIN_AGENTS} agents • 0/${total}`;
+      statusText.textContent = `${NUM_TRACKS * AGENTS_TRACK} agents • 0/${total}`;
 
-      // ── Dynamic agent activation: start with MIN_AGENTS ─────────────────
-      let liveCount = MIN_AGENTS;
-
-      function getLiveCount() {
-        return MIN_AGENTS + (Math.floor(builtCount / 35) % (MAX_AGENTS - MIN_AGENTS + 1));
-      }
-
-      function activateAgents(count) {
-        // Assign count agents across NUM_TRACKS (count/4 per track)
-        const perTrack = Math.ceil(count / NUM_TRACKS);
-        tracks.forEach((tr, t) => {
-          tr.agentIndices = [];
-          tr.currentEl = null;
-          hideTrack(tr);
-        });
-        let assigned = 0;
-        for (let t = 0; t < NUM_TRACKS && assigned < count; t++) {
-          for (let s = 0; s < perTrack && assigned < count; s++) {
-            const aIdx = t * perTrack + s;
-            if (aIdx < AGENTS_TOTAL) {
-              agents[aIdx].trackIdx  = t;
-              agents[aIdx].agentSlot = s;
-              tracks[t].agentIndices.push(aIdx);
-              assigned++;
-            }
+      // Assign agents to tracks — set trackIdx BEFORE intro so runIntro doesn't overwrite
+      tracks.forEach((tr, t) => {
+        tr.agentIndices = [];
+        tr.currentEl = null;
+        hideTrack(tr);
+        for (let s = 0; s < AGENTS_TRACK; s++) {
+          const aIdx = t * AGENTS_TRACK + s;
+          if (aIdx < AGENTS_TOTAL) {
+            agents[aIdx].trackIdx  = t;
+            agents[aIdx].agentSlot = s;
+            tr.agentIndices.push(aIdx);
           }
         }
-        // Hide unused agents
-        for (let i = count; i < AGENTS_TOTAL; i++) {
-          agents[i].trackIdx = -1;
-          agents[i].cur.style.opacity = '0';
-        }
-        // Seed free-roam targets for newly active agents
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        for (let i = 0; i < count; i++) {
-          const a = agents[i];
-          if (a.tx === 0 && a.ty === 0) {
-            a.tx = 20 + Math.random() * (vw - 110);
-            a.ty = 20 + Math.random() * (vh - 70);
-          }
-        }
+      });
+      // Extra agents: trackIdx = -1, hidden immediately and permanently
+      for (let i = NUM_TRACKS * AGENTS_TRACK; i < AGENTS_TOTAL; i++) {
+        agents[i].trackIdx = -1;
+        agents[i].cur.style.opacity = '0';
       }
 
-      activateAgents(liveCount);
-
+      // ── physicsLoop starts AFTER intro to avoid racing with introFrame ──
+      // Run 1.7s intro ribbons first
       runIntro(() => {
         if (!isReplaying) return;
 
-        // Hide agents beyond liveCount (intro showed all)
-        for (let i = liveCount; i < AGENTS_TOTAL; i++) {
+        // Ensure extra agents are hidden (intro showed all of them)
+        for (let i = NUM_TRACKS * AGENTS_TRACK; i < AGENTS_TOTAL; i++) {
           agents[i].cur.style.opacity = '0';
         }
 
@@ -674,20 +627,15 @@
         lastPhysicsTime = performance.now();
         rafId = requestAnimationFrame(physicsLoop);
 
-        // ── Section-based layer split ──────────────────────────────────────
-        // Track 0 = top 25% of page, Track 1 = 25-50%, etc.
-        // → agents of different tracks work at DIFFERENT Y positions → full spread
-        const chunkSize = Math.ceil(total / NUM_TRACKS);
-        const trackLayers = tracks.map((_, t) =>
-          layers.slice(t * chunkSize, (t + 1) * chunkSize)
-        );
+        // Split layers across NUM_TRACKS round-robin
+        const trackLayers = tracks.map(() => []);
+        layers.forEach((item, i) => trackLayers[i % NUM_TRACKS].push(item));
 
-        const baseInterval = 280; // ms per layer at 1x
+        const baseInterval = 280; // ms per layer at 1x — readable pace
 
         tracks.forEach((tr, t) => {
-          if (trackLayers[t].length === 0) return;
-
-          const startOffset = t * Math.round(50 / speedMultiplier);
+          // Stagger tracks slightly so bboxes don't all flash simultaneously
+          const startOffset = t * Math.round(40 / speedMultiplier);
           let delay = startOffset;
 
           trackLayers[t].forEach(item => {
@@ -701,17 +649,17 @@
               playWireframeSound();
             }, Math.max(0, delay - Math.round(90 / speedMultiplier))));
 
-            // Phase B: build — set stable targets for agents on this track
+            // Phase B: build — assign track to this element
             replayTimers.push(setTimeout(() => {
               if (!isReplaying) return;
 
               const rect = item.el.getBoundingClientRect();
 
-              // Touring — driven by track 1 (middle section = best view)
-              if (touringEnabled && t === 1) touringFollow(rect);
+              // Touring — driven by track 0 (frontrunner)
+              if (touringEnabled && t === 0) touringFollow(rect);
 
               assignToTrack(tr, item);
-              updateTrackOverlay(tr, rect, item.label, t);
+              updateTrackOverlay(tr, rect, item.label);
 
               item.el.classList.remove('swarm-wireframe-layer');
               item.el.classList.add('swarm-built-layer');
@@ -720,14 +668,7 @@
               else playSnapSound();
 
               builtCount++;
-
-              // Vary agent count every 35 layers (14→15→16→17→18→14…)
-              const newLive = getLiveCount();
-              if (newLive !== liveCount) {
-                liveCount = newLive;
-                activateAgents(liveCount);
-              }
-              statusText.textContent = `${liveCount} agents • ${builtCount}/${total}`;
+              statusText.textContent = `${NUM_TRACKS * AGENTS_TRACK} agents • ${builtCount}/${total}`;
 
               if (builtCount >= total) {
                 replayTimers.push(setTimeout(() => stopReplay(true, total),

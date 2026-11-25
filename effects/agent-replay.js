@@ -119,7 +119,7 @@
     { sel: '[class*="tag"]',                                      label: 'TagEl',            type: 'box' },
     { sel: '[class*="btn"]:not(#agent-replay-dock *)',             label: 'BtnEl',            type: 'box' },
     { sel: '[class*="grid"] > *',                                 label: 'GridCell',         type: 'box' },
-    // ── Extended sweeps → 300-350 layers ─────────────────────────────────
+    // ── Extended sweeps → target ~300-350 layers ─────────────────────────
     { sel: '#projects-grid .project-card h4',                     label: 'CardSubtitle',     type: 'text' },
     { sel: '#projects-grid .project-card [class*="badge"]',       label: 'CardBadge',        type: 'box' },
     { sel: '#projects-grid .project-card header',                 label: 'CardHeader',       type: 'box' },
@@ -135,8 +135,6 @@
     { sel: '#docs p',                                             label: 'DocsParaGen',      type: 'text' },
     { sel: '#docs span',                                          label: 'DocsSpan',         type: 'text' },
     { sel: '#docs a',                                             label: 'DocsLink',         type: 'box' },
-    { sel: '#docs img',                                           label: 'DocsImg',          type: 'box' },
-    { sel: '#docs button',                                        label: 'DocsBtn',          type: 'box' },
     { sel: '#about h4',                                           label: 'AboutH4',          type: 'text' },
     { sel: '#about [class*="card"]',                              label: 'AboutCard',        type: 'box' },
     { sel: '#about img',                                          label: 'AboutImg',         type: 'box' },
@@ -147,45 +145,21 @@
     { sel: '#journey .space-y-6 > div h4',                        label: 'TimelineH4',       type: 'text' },
     { sel: '#journey .space-y-6 > div [class*="tag"]',            label: 'TimelineTag',      type: 'box' },
     { sel: '#journey .space-y-6 > div span',                      label: 'TimelineSpan',     type: 'text' },
-    { sel: '#journey [class*="line"]',                            label: 'TimelineLine',     type: 'box' },
-    { sel: '#journey [class*="dot"]',                             label: 'TimelineDot',      type: 'box' },
     { sel: '#journey p',                                          label: 'JourneyPara',      type: 'text' },
     { sel: '#journey span',                                       label: 'JourneySpan',      type: 'text' },
     { sel: '#contact h3',                                         label: 'ContactH3',        type: 'text' },
     { sel: '#contact [class*="social"]',                          label: 'SocialLink',       type: 'box' },
-    { sel: '#contact [class*="card"]',                            label: 'ContactCard',      type: 'box' },
     { sel: '#contact span',                                       label: 'ContactSpan',      type: 'text' },
     { sel: '#contact a',                                          label: 'ContactLink',      type: 'box' },
     { sel: 'footer span',                                         label: 'FooterSpan',       type: 'text' },
-    { sel: 'footer [class*="social"]',                            label: 'FooterSocial',     type: 'box' },
     { sel: 'main > section > div > h3',                           label: 'SectionDivH3',     type: 'text' },
     { sel: 'main > section > div > p',                            label: 'SectionDivPara',   type: 'text' },
-    { sel: '[class*="card"] > div',                               label: 'CardDiv',          type: 'box' },
-    { sel: '[class*="card"] span',                                label: 'CardSpanG',        type: 'text' },
-    { sel: '[class*="pill"]',                                     label: 'PillEl',           type: 'box' },
-    { sel: '[class*="separator"]',                                label: 'Separator',        type: 'box' },
-    { sel: '[class*="flex"] > a',                                 label: 'FlexLink',         type: 'box' },
-    { sel: '[class*="rounded"] > span',                           label: 'RoundedSpan',      type: 'text' },
-    { sel: 'main [class*="border"]',                              label: 'BorderEl',         type: 'box' },
-    { sel: 'main [class*="shadow"]',                              label: 'ShadowEl',         type: 'box' },
-    { sel: 'main [class*="ring"]',                                label: 'RingEl',           type: 'box' },
-    { sel: 'main [class*="icon"]',                                label: 'IconEl',           type: 'box' },
-    { sel: 'main ul > li',                                        label: 'ListItem',         type: 'box' },
-    { sel: 'main ol > li',                                        label: 'OlItem',           type: 'box' },
-    { sel: 'main figure',                                         label: 'Figure',           type: 'box' },
-    { sel: 'main strong',                                         label: 'StrongEl',         type: 'text' },
-    { sel: 'main code',                                           label: 'CodeEl',           type: 'text' },
-    { sel: 'main details',                                        label: 'DetailsEl',        type: 'box' },
-    { sel: 'main summary',                                        label: 'SummaryEl',        type: 'text' },
-    { sel: 'main [data-aos]',                                     label: 'AosEl',            type: 'box' },
     { sel: 'section.bg-\\[\\#0b0c10\\] span',                     label: 'BentoSpan',        type: 'text' },
     { sel: 'section.bg-\\[\\#0b0c10\\] h3',                       label: 'BentoH3',          type: 'text' },
     { sel: 'section.bg-\\[\\#0b0c10\\] li',                       label: 'BentoLi',          type: 'box' },
     { sel: 'section.bg-\\[\\#0b0c10\\] a',                        label: 'BentoLink',        type: 'box' },
     { sel: '#hero h1 span',                                       label: 'HeroTitleSpan',    type: 'text' },
     { sel: '#hero [class*="stat"]',                               label: 'StatItem',         type: 'box' },
-    { sel: '#hero [class*="number"]',                             label: 'StatNumber',       type: 'text' },
-    { sel: '#hero [class*="label"]',                              label: 'StatLabel',        type: 'text' },
     { sel: 'header button',                                       label: 'HeaderBtn2',       type: 'box' },
     { sel: '#works > *',                                          label: 'WorksRow',         type: 'box' },
     { sel: '#works p',                                            label: 'WorksPara',        type: 'text' },
@@ -511,13 +485,16 @@
       const ex = rect.left + rect.width  / 2;
       const ey = rect.top  + rect.height / 2;
 
-      tr.agentIndices.forEach((aIdx, slot) => {
+      tr.agentIndices.forEach((aIdx) => {
         const a = agents[aIdx];
-        // Each agent slot gets its own column band across the full viewport
-        const colFrac = (slot + 0.5 + (Math.random() - 0.5) * 0.6) / Math.max(tr.agentIndices.length, 1);
-        // Mix element position (40%) with free viewport spread (60%)
-        const tx = ex * 0.4 + (colFrac * vw) * 0.6 + (Math.random() - 0.5) * vw * 0.18;
-        const ty = ey * 0.4 + (Math.random() * vh)  * 0.6 + (Math.random() - 0.5) * vh * 0.15;
+        // Spread all 14-18 agents across a 4x5 viewport grid so they never clump in one corner
+        const col = aIdx % 4;
+        const row = Math.floor(aIdx / 4) % 5;
+        const zoneX = ((col + 0.5) / 4) * vw;
+        const zoneY = ((row + 0.5) / 5) * vh;
+        // Blend 35% element position + 65% full-viewport spread + jitter
+        const tx = ex * 0.35 + zoneX * 0.65 + (Math.random() - 0.5) * vw * 0.22;
+        const ty = ey * 0.35 + zoneY * 0.65 + (Math.random() - 0.5) * vh * 0.20;
         a.tx = Math.max(20, Math.min(vw - 100, tx));
         a.ty = Math.max(20, Math.min(vh - 70,  ty));
       });
@@ -661,7 +638,7 @@
       const layers = collectLayers();
       const total  = layers.length;
 
-      // Blank canvas
+      // Blank canvas during 1.7s intro
       layers.forEach(item => {
         item.el.classList.remove('swarm-built-layer', 'swarm-wireframe-layer');
         item.el.classList.add('swarm-blank-layer');
@@ -727,16 +704,11 @@
         lastPhysicsTime = performance.now();
         rafId = requestAnimationFrame(physicsLoop);
 
-        // ── Section-based layer split (NOT round-robin) ───────────────────
-        // Track 0 = top 25% of layers (header/hero)
-        // Track 1 = 25-50% (bento/works)
-        // Track 2 = 50-75% (services/about)
-        // Track 3 = bottom 25% (journey/contact/footer)
-        // → 4 groups of agents work at DIFFERENT Y positions → full spread
-        const chunkSize = Math.ceil(total / NUM_TRACKS);
-        const trackLayers = tracks.map((_, t) =>
-          layers.slice(t * chunkSize, (t + 1) * chunkSize)
-        );
+        // ── Round-robin layer split across NUM_TRACKS ────────────────────
+        // All 4 tracks build the current viewport top-to-bottom simultaneously
+        // so parent <section>s appear right away and Touring stays in sync.
+        const trackLayers = tracks.map(() => []);
+        layers.forEach((item, i) => trackLayers[i % NUM_TRACKS].push(item));
 
         const baseInterval = 280;
 
@@ -762,11 +734,21 @@
 
               const rect = item.el.getBoundingClientRect();
 
-              // Touring — driven by track 1 (middle section = best view)
-              if (touringEnabled && t === 1) touringFollow(rect);
+              // Touring — driven by track 0 (frontrunner)
+              if (touringEnabled && t === 0) touringFollow(rect);
 
               assignToTrack(tr, item, rect);
               updateTrackOverlay(tr, rect, item.label);
+
+              // Ensure no ancestor container stays blank and hides this built element
+              let p = item.el.parentElement;
+              while (p && p !== document.body) {
+                if (p.classList.contains('swarm-blank-layer')) {
+                  p.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
+                  p.classList.add('swarm-built-layer');
+                }
+                p = p.parentElement;
+              }
 
               item.el.classList.remove('swarm-wireframe-layer');
               item.el.classList.add('swarm-built-layer');

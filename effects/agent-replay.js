@@ -369,7 +369,7 @@
       const vw = window.innerWidth;
       // Preferred screen zone per agent so 14-18 cursors spread across the whole viewport
       const zoneX = (((agent.id % 6) + 0.5) / 6) * vw;
-      const zoneY = ((Math.floor(agent.id / 6) + 0.5) / 3) * vh;
+      const zoneY = 80 + ((Math.floor(agent.id / 6) + 0.5) / 3) * Math.max(200, vh - 140);
 
       let best = null;
       let bestScore = Infinity;
@@ -383,7 +383,7 @@
 
         const zoneDist = Math.hypot(r.left - zoneX, r.top - zoneY);
         const agentDist = Math.hypot(r.left - agent.x, r.top - agent.y);
-        const score = zoneDist * 0.65 + agentDist * 0.35 + Math.max(0, r.top) * 0.2;
+        const score = zoneDist * 0.72 + agentDist * 0.28;
         if (score < bestScore) {
           bestScore = score;
           best = l;
@@ -617,20 +617,20 @@
             let accelRate = 7.0;
 
             if (builtCount >= total) {
-              desiredSpeed = 520;
-              accelRate = 10.0;
-            } else if (unbuiltVisible <= 5 || workingCount <= 6) {
-              // Current section nearly/already done -> scroll FAST right away so agents get new layers!
               desiredSpeed = 540;
-              accelRate = 12.0;
-            } else if (unbuiltVisible >= 11 && leadTop < vh * 0.45) {
-              // Dense new section in view -> slow down smoothly while agents build it
-              desiredSpeed = 22;
-              accelRate = 6.5;
+              accelRate = 10.0;
+            } else if (unbuiltVisible <= 5 || leadTop > vh * 0.48) {
+              // Current screen nearly done or unbuilt layers are only in bottom half -> scroll FAST to fill whole screen!
+              desiredSpeed = 620;
+              accelRate = 14.0;
+            } else if (unbuiltVisible >= 10 && leadTop <= vh * 0.28) {
+              // Fresh unbuilt layers fill top, middle & bottom -> creep very slowly while agents work across full screen
+              desiredSpeed = 14;
+              accelRate = 8.0;
             } else {
-              // Mid-build cruising
-              desiredSpeed = 75;
-              accelRate = 6.0;
+              // Mid-build transition
+              desiredSpeed = 65;
+              accelRate = 6.5;
             }
 
             currentScrollSpeed += (desiredSpeed - currentScrollSpeed) * Math.min(1, accelRate * rawDt);

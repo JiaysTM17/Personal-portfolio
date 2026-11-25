@@ -664,26 +664,28 @@
     // when building begins so normal 14-18 agent behavior is 100% unchanged.
     let introRafId = null;
 
-    // 46 balanced normalized points forming crisp "HELLO" across [-0.48..0.50, -0.50..0.50]
+    // 66 denser normalized points forming ultra-crisp "HELLO" with clear letter gaps
     const HELLO_POINTS = [
-      // H (11 pts: -0.48 .. -0.32)
-      [-0.48,-0.50], [-0.48,-0.25], [-0.48,0.00], [-0.48,0.25], [-0.48,0.50],
-      [-0.40, 0.00],
-      [-0.32,-0.50], [-0.32,-0.25], [-0.32,0.00], [-0.32,0.25], [-0.32,0.50],
-      // E (11 pts: -0.24 .. -0.10)
-      [-0.24,-0.50], [-0.24,-0.25], [-0.24,0.00], [-0.24,0.25], [-0.24,0.50],
-      [-0.17,-0.50], [-0.10,-0.50],
-      [-0.17, 0.00], [-0.11, 0.00],
-      [-0.17, 0.50], [-0.10, 0.50],
-      // L (7 pts: -0.02 .. 0.10)
-      [-0.02,-0.50], [-0.02,-0.25], [-0.02,0.00], [-0.02,0.25], [-0.02,0.50],
-      [ 0.04, 0.50], [ 0.10, 0.50],
-      // L (7 pts: 0.17 .. 0.29)
-      [ 0.17,-0.50], [ 0.17,-0.25], [ 0.17,0.00], [ 0.17,0.25], [ 0.17,0.50],
-      [ 0.23, 0.50], [ 0.29, 0.50],
-      // O (10 pts: cx=0.43, rx=0.075, ry=0.50)
-      [ 0.43,-0.50], [ 0.474,-0.40], [ 0.501,-0.15], [ 0.501, 0.15], [ 0.474, 0.40],
-      [ 0.43, 0.50], [ 0.386, 0.40], [ 0.359, 0.15], [ 0.359,-0.15], [ 0.386,-0.40],
+      // H (17 pts: -0.50 .. -0.36)
+      [-0.50,-0.50], [-0.50,-0.33], [-0.50,-0.17], [-0.50,0.00], [-0.50,0.17], [-0.50,0.33], [-0.50,0.50],
+      [-0.465,0.00], [-0.43, 0.00], [-0.395,0.00],
+      [-0.36,-0.50], [-0.36,-0.33], [-0.36,-0.17], [-0.36,0.00], [-0.36,0.17], [-0.36,0.33], [-0.36,0.50],
+      // E (15 pts: -0.27 .. -0.14)
+      [-0.27,-0.50], [-0.27,-0.33], [-0.27,-0.17], [-0.27,0.00], [-0.27,0.17], [-0.27,0.33], [-0.27,0.50],
+      [-0.225,-0.50], [-0.18,-0.50], [-0.14,-0.50],
+      [-0.225, 0.00], [-0.17, 0.00],
+      [-0.225, 0.50], [-0.18, 0.50], [-0.14, 0.50],
+      // L (10 pts: -0.05 .. 0.07)
+      [-0.05,-0.50], [-0.05,-0.33], [-0.05,-0.17], [-0.05,0.00], [-0.05,0.17], [-0.05,0.33], [-0.05,0.50],
+      [-0.01, 0.50], [ 0.03, 0.50], [ 0.07, 0.50],
+      // L (10 pts: 0.16 .. 0.28)
+      [ 0.16,-0.50], [ 0.16,-0.33], [ 0.16,-0.17], [ 0.16,0.00], [ 0.16,0.17], [ 0.16,0.33], [ 0.16,0.50],
+      [ 0.20, 0.50], [ 0.24, 0.50], [ 0.28, 0.50],
+      // O (14 pts: cx=0.435, rx=0.065, ry=0.50)
+      ...Array.from({ length: 14 }, (_, k) => {
+        const a = (k / 14) * Math.PI * 2;
+        return [0.435 + Math.cos(a) * 0.065, Math.sin(a) * 0.50];
+      }),
     ];
 
     function runIntro(onDone) {
@@ -692,8 +694,8 @@
 
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const helloW = Math.min(760, vw * 0.80);
-      const helloH = Math.min(180, vh * 0.30);
+      const helloW = Math.min(720, vw * 0.78);
+      const helloH = Math.min(175, vh * 0.28);
       const totalIntro = HELLO_POINTS.length;
 
       // Hide text labels on the 18 main agents during 'HELLO'
@@ -702,7 +704,7 @@
         if (lbl) lbl.style.opacity = '0';
       });
 
-      // Build intro actors: 0..17 reuse main agents, 18..45 are temporary arrowheads
+      // Build intro actors: 0..17 reuse main agents, 18..65 are temporary arrowheads
       const introActors = [];
       for (let i = 0; i < totalIntro; i++) {
         if (i < AGENTS_TOTAL) {
@@ -718,8 +720,8 @@
         }
       }
 
-      // True 2D scatter across an 8x6 grid across the entire viewport
-      const cols = 8, rows = 6;
+      // True 2D scatter across an 11x6 grid across the entire viewport
+      const cols = 11, rows = 6;
       const slots = Array.from({ length: totalIntro }, (_, idx) => idx);
       slots.sort((a, b) => Math.sin(a * 12.9898) - Math.sin(b * 78.233));
 
@@ -791,7 +793,7 @@
             const lookDeg  = baseLook + dirSign * swing;
             const diff     = ((lookDeg - a.angle + 540) % 360) - 180;
             a.angle += diff * Math.min(1, dt * 8);
-            if (a.arrowEl) a.arrowEl.style.transform = `rotate(${a.angle.toFixed(1)}deg)`;
+            if (a.arrowEl) a.arrowEl.style.transform = `rotate(${a.angle.toFixed(1)}deg) scale(1.22)`;
           } else {
             updateArrowHeading(a, moveX, moveY, dt);
           }

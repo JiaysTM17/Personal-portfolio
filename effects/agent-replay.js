@@ -608,23 +608,32 @@
         peakOrCurrentActive = workingCount > 0 ? clamp(workingCount, 1, MAX_AGENTS) : peakOrCurrentActive;
         statusText.textContent = `${workingCount} agents • ${builtCount}/${total}`;
 
-        // Touring Auto-Scroll: wait until 85% of Hero is built, then adapt speed directly to agent progress
+        // Touring Auto-Scroll: wait until 85% of Hero is built, then wave fast-transition -> slow-build
         const heroReady = heroTotal === 0 || (heroBuilt / heroTotal) >= 0.85;
         if (touringEnabled && heroReady) {
           const maxScroll = Math.max(0, document.documentElement.scrollHeight - vh);
           if (scrollFloatY < maxScroll) {
-            let desiredSpeed = 65;
+            let desiredSpeed = 60;
+            let accelRate = 7.0;
+
             if (builtCount >= total) {
-              desiredSpeed = 190; // everything built -> glide smoothly to bottom
-            } else if (leadTop < vh * 0.26 || unbuiltVisible >= 10) {
-              desiredSpeed = 18; // agents busy across current screen -> creep slowly, never outrun
-            } else if (leadTop > vh * 0.62 || unbuiltVisible <= 2) {
-              desiredSpeed = 140; // current viewport nearly done -> speed up to next section
+              desiredSpeed = 520;
+              accelRate = 10.0;
+            } else if (unbuiltVisible <= 5 || workingCount <= 6) {
+              // Current section nearly/already done -> scroll FAST right away so agents get new layers!
+              desiredSpeed = 540;
+              accelRate = 12.0;
+            } else if (unbuiltVisible >= 11 && leadTop < vh * 0.45) {
+              // Dense new section in view -> slow down smoothly while agents build it
+              desiredSpeed = 22;
+              accelRate = 6.5;
             } else {
-              desiredSpeed = 52; // balanced progress
+              // Mid-build cruising
+              desiredSpeed = 75;
+              accelRate = 6.0;
             }
 
-            currentScrollSpeed += (desiredSpeed - currentScrollSpeed) * Math.min(1, 3.2 * rawDt);
+            currentScrollSpeed += (desiredSpeed - currentScrollSpeed) * Math.min(1, accelRate * rawDt);
             scrollFloatY = Math.min(maxScroll, scrollFloatY + currentScrollSpeed * dt);
             window.scrollTo({ top: scrollFloatY, behavior: 'instant' });
           }

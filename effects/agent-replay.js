@@ -13,7 +13,7 @@
   const MIN_AGENTS    = 14;
   const MAX_AGENTS    = 18;
   const AGENTS_TOTAL  = 18;
-  const INTRO_DUR     = 2800; // romantic unhurried intro
+  const INTRO_DUR     = 3800; // scatter -> romantic glide to 'K' -> hold -> burst
 
   const AGENT_COLORS = [
     '#3b82f6','#8b5cf6','#ec4899','#f59e0b',
@@ -628,26 +628,46 @@
       }
     }
 
-    // ── 1.7s Intro: scatter → whirlpool vortex → burst outward ─────────────
-    // ALL agents visible during intro. Uses its own RAF before physicsLoop starts.
+    // ── 3.8s Intro: scatter → romantic glide into 'K' → hold 1.3s → burst ─
+    // ALL 18 agents visible during intro. Uses its own RAF before physicsLoop starts.
     let introRafId = null;
+
+    // 18 normalized points forming a crisp capital letter 'K'
+    const K_POINTS = [
+      // Left vertical stem (8 points)
+      [-0.44, -0.50], [-0.44, -0.36], [-0.44, -0.22], [-0.44, -0.07],
+      [-0.44,  0.07], [-0.44,  0.22], [-0.44,  0.36], [-0.44,  0.50],
+      // Upper diagonal arm (5 points)
+      [-0.28, -0.08], [-0.12, -0.20], [ 0.04, -0.31], [ 0.20, -0.41], [ 0.36, -0.50],
+      // Lower diagonal leg (5 points)
+      [-0.22,  0.03], [-0.07,  0.15], [ 0.08,  0.27], [ 0.22,  0.39], [ 0.36,  0.50],
+    ];
 
     function runIntro(onDone) {
       overlay.style.display = 'block';
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const maxR = Math.hypot(vw * 0.48, vh * 0.46);
+      const kW = Math.min(220, vw * 0.38);
+      const kH = Math.min(280, vh * 0.44);
 
-      // Seed each agent scattered across the full viewport perimeter
+      // Scatter all 18 agents across the entire viewport at t = 0
       const ipos = agents.map((a, i) => {
-        const baseAng = (i / AGENTS_TOTAL) * Math.PI * 2 + (i % 2) * 0.25;
-        const startR  = maxR * (0.64 + (i % 3) * 0.12);
-        const coreR   = (i % 2 === 0 ? 64 : 112) + (i % 3) * 10;
-        const x = Math.max(15, Math.min(vw - 95, vw * 0.5 + Math.cos(baseAng) * startR));
-        const y = Math.max(15, Math.min(vh - 65, vh * 0.5 + Math.sin(baseAng) * startR * 0.88));
-        a.cur.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+        const ang = (i / AGENTS_TOTAL) * Math.PI * 2 + (i % 3) * 0.45;
+        const rad = Math.hypot(vw * 0.42, vh * 0.40) * (0.55 + ((i * 7) % 5) * 0.11);
+        const sx  = Math.max(24, Math.min(vw - 105, vw * 0.5 + Math.cos(ang) * rad));
+        const sy  = Math.max(24, Math.min(vh - 75,  vh * 0.5 + Math.sin(ang) * rad * 0.85));
+
+        const kp = K_POINTS[i % K_POINTS.length];
+        const kx = vw * 0.5 + kp[0] * kW;
+        const ky = vh * 0.5 + kp[1] * kH;
+
+        // Burst target across the whole screen
+        const bx = Math.max(24, Math.min(vw - 105, vw * 0.5 + Math.cos(ang + 0.5) * vw * 0.42));
+        const by = Math.max(24, Math.min(vh - 75,  vh * 0.5 + Math.sin(ang + 0.5) * vh * 0.40));
+
+        a.cur.style.transform = `translate3d(${sx.toFixed(1)}px,${sy.toFixed(1)}px,0)`;
         a.cur.style.opacity   = '1';
-        return { x, y, baseAng, startR, coreR };
+        return { x: sx, y: sy, sx, sy, kx, ky, bx, by };
       });
 
       let introStart = null;
@@ -659,53 +679,62 @@
         lastIntroNow  = now;
         const elapsed = now - introStart;
         const frac    = Math.min(elapsed / INTRO_DUR, 1);
-        const vw2 = window.innerWidth;
-        const vh2 = window.innerHeight;
-        const cx  = vw2 * 0.5;
-        const cy  = vh2 * 0.5;
 
         agents.forEach((a, i) => {
           const ip = ipos[i];
-          let r, ang;
-          if (frac < 0.78) {
-            // Phase 1: romantic slow-motion clockwise glide inward with soft ocean-wave swell
-            const p = frac / 0.78;
-            const ease = p * p * (3 - 2 * p);
-            const wave = Math.sin(p * Math.PI * 2 + i * 0.5) * 18 * (1 - p * 0.4);
-            r   = ip.startR * (1 - ease) + ip.coreR * ease + wave;
-            ang = ip.baseAng + ease * Math.PI * 2.2;
-          } else {
-            // Phase 2: graceful glide outward to spread across viewport
-            const b = (frac - 0.78) / 0.22;
-            const easeOut = 1 - Math.pow(1 - b, 2);
-            r   = ip.coreR + easeOut * maxR * 0.72;
-            ang = ip.baseAng + Math.PI * 2.2 + b * 0.9;
-          }
+          let nx, ny;
 
-          const nx = Math.max(12, Math.min(vw2 - 95, cx + Math.cos(ang) * r));
-          const ny = Math.max(12, Math.min(vh2 - 65, cy + Math.sin(ang) * r * 0.88));
+          if (frac < 0.50) {
+            // Phase 1 (0 -> 1.9s): Romantic, unhurried glide from scatter to letter 'K'
+            const p    = frac / 0.50;
+            const ease = p * p * (3 - 2 * p); // smoothstep
+            // Subtle curved arc so they float gracefully rather than rigid straight lines
+            const arc  = Math.sin(p * Math.PI) * 24 * (i % 2 === 0 ? 1 : -1);
+            nx = ip.sx + (ip.kx - ip.sx) * ease + arc * 0.6;
+            ny = ip.sy + (ip.ky - ip.sy) * ease - Math.abs(arc) * 0.4;
+          } else if (frac < 0.84) {
+            // Phase 2 (1.9s -> 3.2s, ~1.3s hold): Hold 'K' cleanly with tiny breathing float
+            const breathe = Math.sin((now * 0.003) + i * 0.4) * 2.0;
+            nx = ip.kx;
+            ny = ip.ky + breathe;
+          } else {
+            // Phase 3 (3.2s -> 3.8s): Fast burst outward across the screen
+            const b = (frac - 0.84) / 0.16;
+            const easeOut = 1 - Math.pow(1 - b, 3);
+            nx = ip.kx + (ip.bx - ip.kx) * easeOut;
+            ny = ip.ky + (ip.by - ip.ky) * easeOut;
+          }
 
           const dx = nx - ip.x;
           const dy = ny - ip.y;
           const d  = Math.sqrt(dx * dx + dy * dy);
           let moveX = dx, moveY = dy;
-          if (d > 1) {
-            const spd = Math.min(d, Math.max(360, d * 6) * dt);
-            moveX = (dx / d) * spd;
-            moveY = (dy / d) * spd;
+          if (d > 0.5) {
+            const maxSpd = frac >= 0.84 ? Math.max(1200, d * 14) : Math.max(420, d * 6);
+            const step = Math.min(d, maxSpd * dt);
+            moveX = (dx / d) * step;
+            moveY = (dy / d) * step;
             ip.x += moveX;
             ip.y += moveY;
           } else {
             ip.x = nx; ip.y = ny;
           }
-          updateArrowHeading(a, moveX, moveY, dt);
+
+          if (frac >= 0.50 && frac < 0.84) {
+            // Gently level arrows while holding the 'K' shape
+            const diff = ((0 - a.angle + 540) % 360) - 180;
+            a.angle += diff * Math.min(1, dt * 8);
+            if (a.arrowEl) a.arrowEl.style.transform = `rotate(${a.angle.toFixed(1)}deg)`;
+          } else {
+            updateArrowHeading(a, moveX, moveY, dt);
+          }
+
           a.cur.style.transform = `translate3d(${ip.x.toFixed(1)}px,${ip.y.toFixed(1)}px,0)`;
           a.cur.style.opacity   = '1';
         });
 
         if (elapsed >= INTRO_DUR) {
           introRafId = null;
-          // Seed a.x/a.y from final intro burst positions
           agents.forEach((a, i) => { a.x = ipos[i].x; a.y = ipos[i].y; });
           onDone();
           return;
@@ -895,6 +924,22 @@
               tracks.forEach(hideTrack);
             }
             buildTickTimer = setTimeout(tickBuilder, 120);
+          }
+        }
+
+        // Immediately kick off the first 2 layers per track so the UI (header + hero)
+        // begins appearing right as the 'K' bursts outward, with zero black delay
+        for (let round = 0; round < 2; round++) {
+          for (let t = 0; t < NUM_TRACKS; t++) {
+            const st = trackStates[t];
+            if (st.idx < st.queue.length) {
+              const item = st.queue[st.idx];
+              const rect = item.el.getBoundingClientRect();
+              if (touringEnabled || rect.top < window.innerHeight + 60) {
+                st.idx++;
+                buildOneItem(tracks[t], t, item, rect);
+              }
+            }
           }
         }
 

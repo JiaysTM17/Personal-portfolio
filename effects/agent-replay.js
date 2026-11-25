@@ -298,6 +298,7 @@
       replayTimers.forEach(t => clearTimeout(t));
       replayTimers = [];
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
     }
 
     function restoreAllSavedText() {
@@ -481,37 +482,40 @@
     }
 
     // ── 1.7s Intro: ribbon streams ─────────────────────────────────────────
-    // ALL AGENTS_TOTAL cursors visible and moving — 2 ribbon streams
+    // ALL agents visible during intro. Intro uses its OWN RAF — does NOT
+    // modify a.trackIdx so it never conflicts with physicsLoop.
+    // physicsLoop is NOT started until after intro completes.
+    let introRafId = null;
+
     function runIntro(onDone) {
       overlay.style.display = 'block';
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      // Temporarily make all agents active with ribbon positions
-      agents.forEach((a, i) => {
-        a.trackIdx = i; // abuse trackIdx as ribbon slot during intro
+      // Intro positions stored separately — don't touch a.x/a.y (physics uses those)
+      const ipos = agents.map((a, i) => {
         const stream = i < AGENTS_TOTAL / 2 ? 0 : 1;
         const t = (i % Math.ceil(AGENTS_TOTAL / 2)) / Math.ceil(AGENTS_TOTAL / 2);
+        let x, y;
         if (stream === 0) {
-          a.x = t * vw * 0.9 + 20;
-          a.y = 60 + Math.sin(t * Math.PI) * vh * 0.18;
+          x = t * vw * 0.9 + 20;
+          y = 60 + Math.sin(t * Math.PI) * vh * 0.18;
         } else {
-          a.x = vw - 20 - t * vw * 0.9;
-          a.y = vh - 80 - Math.sin(t * Math.PI) * vh * 0.18;
+          x = vw - 20 - t * vw * 0.9;
+          y = vh - 80 - Math.sin(t * Math.PI) * vh * 0.18;
         }
-        a.tx = a.x; a.ty = a.y;
-        a.cur.style.transform = `translate3d(${a.x}px,${a.y}px,0)`;
+        // Show all agents in intro
+        a.cur.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
         a.cur.style.opacity   = '1';
+        return { x, y };
       });
 
-      // Drive ribbon drift via RAF (bypasses physicsLoop which checks track)
       let introStart = null;
-      let introRaf   = null;
       function introFrame(now) {
-        if (!isReplaying) { introRaf = null; return; }
+        if (!isReplaying) { introRafId = null; return; }
         if (!introStart) introStart = now;
         const elapsed = now - introStart;
-        const frac    = elapsed / INTRO_DUR;
+        const frac    = Math.min(elapsed / INTRO_DUR, 1);
         const vw2 = window.innerWidth;
         const vh2 = window.innerHeight;
 
@@ -530,27 +534,31 @@
             ny = vh2 - 80 - wave - frac * vh2 * 0.09;
           }
 
-          // Smooth move toward ribbon position
-          const dx = nx - a.x;
-          const dy = ny - a.y;
+          // Smooth move toward ribbon target
+          const dx = nx - ipos[i].x;
+          const dy = ny - ipos[i].y;
           const d  = Math.sqrt(dx * dx + dy * dy);
           if (d > 1) {
-            const spd = Math.min(d, Math.max(400, d * 5) * (1/60));
-            a.x += (dx / d) * spd;
-            a.y += (dy / d) * spd;
+            const spd = Math.min(d, Math.max(380, d * 5) / 60);
+            ipos[i].x += (dx / d) * spd;
+            ipos[i].y += (dy / d) * spd;
+          } else {
+            ipos[i].x = nx; ipos[i].y = ny;
           }
-          a.cur.style.transform = `translate3d(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px,0)`;
+          a.cur.style.transform = `translate3d(${ipos[i].x.toFixed(1)}px,${ipos[i].y.toFixed(1)}px,0)`;
           a.cur.style.opacity   = '1';
         });
 
         if (elapsed >= INTRO_DUR) {
-          introRaf = null;
+          introRafId = null;
+          // Seed a.x/a.y from final intro positions so physics starts smoothly
+          agents.forEach((a, i) => { a.x = ipos[i].x; a.y = ipos[i].y; });
           onDone();
           return;
         }
-        introRaf = requestAnimationFrame(introFrame);
+        introRafId = requestAnimationFrame(introFrame);
       }
-      introRaf = requestAnimationFrame(introFrame);
+      introRafId = requestAnimationFrame(introFrame);
     }
 
     // ── Main Replay ────────────────────────────────────────────────────────
@@ -560,6 +568,9 @@
         clearTimers();
         restoreAllSavedText();
       }
+      // Cancel any in-progress intro RAF
+      if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
+
       isReplaying = true;
       builtCount  = 0;
 
@@ -582,7 +593,7 @@
       actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
       statusText.textContent = `${NUM_TRACKS * AGENTS_TRACK} agents • 0/${total}`;
 
-      // Assign agents to tracks (NUM_TRACKS * AGENTS_TRACK = 12 active, rest hidden)
+      // Assign agents to tracks — set trackIdx BEFORE intro so runIntro doesn't overwrite
       tracks.forEach((tr, t) => {
         tr.agentIndices = [];
         tr.currentEl = null;
@@ -590,58 +601,63 @@
         for (let s = 0; s < AGENTS_TRACK; s++) {
           const aIdx = t * AGENTS_TRACK + s;
           if (aIdx < AGENTS_TOTAL) {
-            agents[aIdx].trackIdx   = t;
-            agents[aIdx].agentSlot  = s;
+            agents[aIdx].trackIdx  = t;
+            agents[aIdx].agentSlot = s;
             tr.agentIndices.push(aIdx);
           }
         }
       });
-      // Hide extra agents (index 12-17)
+      // Extra agents: trackIdx = -1, hidden immediately and permanently
       for (let i = NUM_TRACKS * AGENTS_TRACK; i < AGENTS_TOTAL; i++) {
         agents[i].trackIdx = -1;
         agents[i].cur.style.opacity = '0';
       }
 
-      // Start physics loop
-      lastPhysicsTime = performance.now();
-      rafId = requestAnimationFrame(physicsLoop);
-
-      // Run 1.7s intro, then launch 4 parallel tracks
+      // ── physicsLoop starts AFTER intro to avoid racing with introFrame ──
+      // Run 1.7s intro ribbons first
       runIntro(() => {
         if (!isReplaying) return;
+
+        // Ensure extra agents are hidden (intro showed all of them)
+        for (let i = NUM_TRACKS * AGENTS_TRACK; i < AGENTS_TOTAL; i++) {
+          agents[i].cur.style.opacity = '0';
+        }
+
+        // Now start physics loop
+        lastPhysicsTime = performance.now();
+        rafId = requestAnimationFrame(physicsLoop);
 
         // Split layers across NUM_TRACKS round-robin
         const trackLayers = tracks.map(() => []);
         layers.forEach((item, i) => trackLayers[i % NUM_TRACKS].push(item));
 
-        const baseInterval = 150; // ms per layer at 1x (shared pacing, tracks run in parallel)
+        const baseInterval = 280; // ms per layer at 1x — readable pace
 
         tracks.forEach((tr, t) => {
-          // Stagger track start slightly so guide lines don't all flash at once
-          const startOffset = t * Math.round(baseInterval / NUM_TRACKS / speedMultiplier);
+          // Stagger tracks slightly so bboxes don't all flash simultaneously
+          const startOffset = t * Math.round(40 / speedMultiplier);
           let delay = startOffset;
 
-          trackLayers[t].forEach((item, localIdx) => {
-            const stepDelay = Math.max(35, Math.round(baseInterval / speedMultiplier));
+          trackLayers[t].forEach(item => {
+            const stepDelay = Math.max(60, Math.round(baseInterval / speedMultiplier));
 
-            // Phase A: wireframe
+            // Phase A: wireframe flash
             replayTimers.push(setTimeout(() => {
               if (!isReplaying) return;
               item.el.classList.remove('swarm-blank-layer');
               item.el.classList.add('swarm-wireframe-layer');
               playWireframeSound();
-            }, Math.max(0, delay - Math.round(70 / speedMultiplier))));
+            }, Math.max(0, delay - Math.round(90 / speedMultiplier))));
 
-            // Phase B: build
+            // Phase B: build — assign track to this element
             replayTimers.push(setTimeout(() => {
               if (!isReplaying) return;
 
               const rect = item.el.getBoundingClientRect();
 
-              // Touring scroll — Touring is driven by track 0 (the leading track)
+              // Touring — driven by track 0 (frontrunner)
               if (touringEnabled && t === 0) touringFollow(rect);
 
-              // Assign this track to this element + update guide overlay
               assignToTrack(tr, item);
               updateTrackOverlay(tr, rect, item.label);
 
@@ -655,7 +671,8 @@
               statusText.textContent = `${NUM_TRACKS * AGENTS_TRACK} agents • ${builtCount}/${total}`;
 
               if (builtCount >= total) {
-                replayTimers.push(setTimeout(() => stopReplay(true, total), Math.round(500 / speedMultiplier)));
+                replayTimers.push(setTimeout(() => stopReplay(true, total),
+                  Math.round(600 / speedMultiplier)));
               }
             }, delay));
 

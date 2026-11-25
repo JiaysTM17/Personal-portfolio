@@ -25,6 +25,7 @@ Trang web **Portfolio cá nhân** của **Trương Gia Kiệt** — được thi
   * `04 // STUDIO CLOCK`: Đồng hồ thời gian thực múi giờ TP. Hồ Chí Minh (`GMT+7`).
 * **Selected Work & Lightbox Modal:** Bộ lọc dự án theo danh mục, thẻ giao diện độ phân giải cao và hộp thoại xem chi tiết kèm liên kết GitHub / Live Site.
 * **Technical Architecture & Reports:** Trình bày các tài liệu đặc tả hệ thống và báo cáo kiểm thử tự động từ các đồ án thực tế.
+* **Multi-Agent Build Replay Effect (`effects/agent-replay.js`):** Hiệu ứng mô phỏng đàn con trỏ AI (14 agents), đường căn gióng Figma và hộp chọn bounding box lắp ráp từng lớp giao diện trực tiếp như trong video, kèm thanh điều khiển nổi (`Replay Build`, `Go Live`, tốc độ `1x/2x`).
 * **Interactive Controls:** `Zen Focus Mode`, `Click-to-Copy Email`, `CV Resume Modal (In / Lưu PDF)` và biểu mẫu liên hệ trực tiếp qua `mailto:`.
 
 ---
@@ -51,6 +52,9 @@ Personal-portfolio/
 ├── script.js                  # Logic lọc dự án, modal, Studio Clock, Click-to-Copy & CV
 ├── README.md                  # Tài liệu giới thiệu & hướng dẫn triển khai
 ├── .gitignore                 # Quy tắc loại trừ file tạm
+├── effects/                   # Hiệu ứng mô phỏng Multi-Agent Build Replay
+│   ├── agent-replay.css       # Bounding box, alignment guides & floating dock UI
+│   └── agent-replay.js        # Logic con trỏ đa tác vụ (14 agents) & Replay/Go Live
 └── assets/                    # Tài nguyên hình ảnh đã tối ưu
     ├── portrait_kiet.png      # Chân dung tách nền chuyên nghiệp
     ├── banner-strip.png       # Dải banner studio moodboard

@@ -1,0 +1,154 @@
+/* Multi-Agent Build Replay Effect (Figma / AI Swarm Overlay) */
+
+#agent-replay-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 80;
+  overflow: hidden;
+}
+
+/* Red/Orange Figma Alignment Guide Lines */
+.agent-guide-h {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(249, 115, 22, 0.45);
+  pointer-events: none;
+  transition: top 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+.agent-guide-v {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(249, 115, 22, 0.45);
+  pointer-events: none;
+  transition: left 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+/* Blue Selection Bounding Box */
+.agent-bbox {
+  position: fixed;
+  border: 1.5px solid #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+  pointer-events: none;
+  transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 18px rgba(37, 99, 235, 0.2);
+}
+
+/* 4 Corner Handles */
+.agent-bbox-handle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border: 1.5px solid #3b82f6;
+}
+.agent-bbox-handle.tl { top: -4px; left: -4px; }
+.agent-bbox-handle.tr { top: -4px; right: -4px; }
+.agent-bbox-handle.bl { bottom: -4px; left: -4px; }
+.agent-bbox-handle.br { bottom: -4px; right: -4px; }
+
+/* Tag Pill & Dimension Pill */
+.agent-bbox-tag {
+  position: absolute;
+  top: -20px;
+  left: -1px;
+  background: #2563eb;
+  color: #ffffff;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.agent-bbox-dim {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2563eb;
+  color: #ffffff;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Multiplayer Agent Cursors */
+.agent-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 85;
+  will-change: transform;
+  transition: transform 0.55s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+.agent-cursor-label {
+  margin-left: 12px;
+  margin-top: -2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+
+/* Layer Reveal State during Replay */
+.replay-hidden-layer {
+  opacity: 0.14 !important;
+  filter: saturate(0.2) blur(1.5px) !important;
+  transition: opacity 0.35s ease, filter 0.35s ease !important;
+}
+
+.replay-revealed-layer {
+  opacity: 1 !important;
+  filter: none !important;
+  transition: opacity 0.35s ease, filter 0.35s ease !important;
+}
+
+/* Floating Control Dock at Bottom Center */
+#agent-replay-dock {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 17, 25, 0.92);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 999px;
+  padding: 6px 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65), 0 0 25px rgba(37, 99, 235, 0.18);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: #e2e8f0;
+  transition: all 0.3s ease;
+  max-width: 95vw;
+}
+
+@media (max-width: 640px) {
+  #agent-replay-dock {
+    padding: 5px 10px;
+    gap: 6px;
+    font-size: 10px;
+  }
+  .dock-hide-mobile {
+    display: none !important;
+  }
+}

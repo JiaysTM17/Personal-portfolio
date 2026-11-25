@@ -14,9 +14,10 @@
 
 ## 📌 Tổng Quan (Overview)
 
-Trang web **Portfolio cá nhân** của **Trương Gia Kiệt** — được thiết kế theo phong cách **Dark Brutalist Agency** kết hợp **Bento Grid** hiện đại, tối ưu hiệu năng và đồng bộ trực tiếp với các dự án thực tế trên GitHub.
+Trang web **Portfolio cá nhân** của **Trương Gia Kiệt** — được thiết kế theo phong cách **Dark Brutalist Agency** kết hợp **Bento Grid** hiện đại, tối ưu hiệu năng và đồng bộ trực tiếp với các dự án thực tế trên GitHub. Điểm nhấn đặc biệt của trang là hệ thống **Swarm Rebuild Engine** mô phỏng hàng chục AI agents cùng lúc dựng lại toàn bộ giao diện theo thời gian thực.
 
 ### ✨ Tính Năng Nổi Bật
+
 * **Hero Typographic Layering:** Chân dung tách nền kết hợp chữ nền `"PORTFOLIO"` cỡ lớn và cột chỉ số thực tế (`10` Public Repos, `06` Dự án tiêu biểu, `3,151` Automated Tests).
 * **Bento Engineering Hub:**
   * `01 // NARRATIVE`: Định hướng phát triển hệ thống Backend & Fullstack.
@@ -25,8 +26,27 @@ Trang web **Portfolio cá nhân** của **Trương Gia Kiệt** — được thi
   * `04 // STUDIO CLOCK`: Đồng hồ thời gian thực múi giờ TP. Hồ Chí Minh (`GMT+7`).
 * **Selected Work & Lightbox Modal:** Bộ lọc dự án theo danh mục, thẻ giao diện độ phân giải cao và hộp thoại xem chi tiết kèm liên kết GitHub / Live Site.
 * **Technical Architecture & Reports:** Trình bày các tài liệu đặc tả hệ thống và báo cáo kiểm thử tự động từ các đồ án thực tế.
-* **Multi-Agent Build Replay Effect (`effects/agent-replay.js`):** Hiệu ứng mô phỏng đàn con trỏ AI (14 agents), đường căn gióng Figma và hộp chọn bounding box lắp ráp từng lớp giao diện trực tiếp như trong video, kèm thanh điều khiển nổi (`Replay Build`, `Go Live`, tốc độ `1x/2x`).
 * **Interactive Controls:** `Zen Focus Mode`, `Click-to-Copy Email`, `CV Resume Modal (In / Lưu PDF)` và biểu mẫu liên hệ trực tiếp qua `mailto:`.
+
+---
+
+## 🤖 Swarm Rebuild Engine (`effects/agent-replay.js` & `effects/agent-replay.css`)
+
+Hệ thống mô phỏng đa tác tử (Multi-Agent UI/UX Build Replay) chạy hoàn toàn bằng Vanilla JavaScript + `requestAnimationFrame` 60fps:
+
+* **66-Agent `"HELLO"` Intro Formation:**
+  * Lúc khởi động trên nền trống (`4.7s`), **66 mũi tên màu** (18 agents chính + 48 mũi tên intro) xuất phát tản đều khắp màn hình theo lưới `11×6`, sau đó lướt theo đường cong Bézier (`easeInOutSine`) tụ lại thành chữ **`HELLO`** rõ nét (chữ `O` dáng superellipse đồng bộ tỷ lệ với `H-E-L-L`).
+  * Trong lúc giữ chữ **`HELLO`**, từng mũi tên tự xoay độc lập theo nhiều hướng trước khi chuyển tiếp mượt sang đội hình build trang.
+* **4 Parallel Tracks & 14–18 Dynamic Agents:**
+  * Thu thập và lọc tự động **~320+ layer DOM hiển thị thực** (bỏ qua phần tử ẩn `0×0`), chia đều qua 4 track song song với số lượng agents hoạt động thay đổi linh hoạt từ **14 đến 18 agents**.
+  * Tách riêng phần SVG mũi tên (`.agent-arrow`) để xoay đầu mượt theo hướng bay trong khi nhãn tên luôn nằm ngang dễ đọc.
+* **Chống giật & chống lệch chữ (`Zero-Jitter`):**
+  * Tính toán mục tiêu ổn định ngoài vòng lặp `requestAnimationFrame` và loại bỏ CSS `transition: transform` trên con trỏ để giữ chuyển động 60fps mượt mà.
+  * Khóa tạm `minHeight` khi gõ hiệu ứng chữ (`typeElementText`) và chỉ gõ cho thẻ lá (`el.children.length === 0`) để không gây xô lệch bố cục hay mất chữ.
+* **Hai chế độ `Touring` + Hiệu ứng Đàn Cá Quanh Chuột (`Cursor Vortex`):**
+  * **Touring ON (Cuộn tự động):** Tự động cuộn một chiều mượt mà theo tiến trình dựng trang.
+  * **Touring OFF (Người dùng tự kéo):** Chỉ build các layer trong khung hình hiện tại; khi chờ cuộn xuống hoặc khi hoàn tất toàn trang (cả 2 chế độ), các agents tập hợp lại và bơi nối đuôi theo chiều kim đồng hồ thành 2 làn gợn sóng quanh con trỏ chuột.
+* **Floating Control Dock:** Cho phép bật/tắt `Touring`, đổi tốc độ `1x / 2x / 3x`, bật/tắt âm thanh tổng hợp bằng **Web Audio API** (`🔊 / 🔇`), chuyển nhanh `Replay / Go Live` hoặc thu gọn thành pill `Swarm Replay`.
 
 ---
 
@@ -50,11 +70,11 @@ Personal-portfolio/
 ├── index.html                 # Cấu trúc giao diện chính (Semantic HTML5 + Tailwind CSS)
 ├── style.css                  # Tùy biến scrollbar, hiệu ứng glow, modal & responsive
 ├── script.js                  # Logic lọc dự án, modal, Studio Clock, Click-to-Copy & CV
-├── README.md                  # Tài liệu giới thiệu & hướng dẫn triển khai
+├── README.md                  # Tài liệu giới thiệu, kiến trúc Swarm Replay & hướng dẫn chạy
 ├── .gitignore                 # Quy tắc loại trừ file tạm
-├── effects/                   # Hiệu ứng mô phỏng Multi-Agent Build Replay
-│   ├── agent-replay.css       # Bounding box, alignment guides & floating dock UI
-│   └── agent-replay.js        # Logic con trỏ đa tác vụ (14 agents) & Replay/Go Live
+├── effects/                   # Hệ thống Swarm Rebuild Engine
+│   ├── agent-replay.css       # Bounding box, lớp blank/wireframe/built & floating dock UI
+│   └── agent-replay.js        # Intro HELLO (66 mũi tên), 14-18 agents, Touring & Cursor Vortex
 └── assets/                    # Tài nguyên hình ảnh đã tối ưu
     ├── portrait_kiet.png      # Chân dung tách nền chuyên nghiệp
     ├── banner-strip.png       # Dải banner studio moodboard

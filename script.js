@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'nexora': {
       title: 'NEXORA — NEXT-GEN FASHION MARKETPLACE',
       category: 'FASHION MARKETPLACE',
-      tools: 'React.js, Node.js, Express, MongoDB, Tailwind CSS, REST API',
+      tools: 'TypeScript, Brand Visual Identity, System Design',
       img: 'assets/nexora.jpg',
       link: 'https://github.com/JiaysTM17/nexora',
       demo: '',

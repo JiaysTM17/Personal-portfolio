@@ -308,10 +308,28 @@
     dockEl.querySelector('#swarm-close-btn').addEventListener('click', () => {
       if (isReplaying) finishReplay(true);
       if (dockEl) {
-        dockEl.remove();
-        dockEl = null;
+        dockEl.style.display = 'none';
       }
+      showMiniPill();
     });
+  }
+
+  let miniPillEl = null;
+  function showMiniPill() {
+    if (!miniPillEl) {
+      miniPillEl = document.createElement('button');
+      miniPillEl.type = 'button';
+      miniPillEl.className =
+        'fixed bottom-5 right-5 z-[100001] flex items-center gap-2 px-3.5 py-2 rounded-full bg-zinc-900/90 border border-zinc-700/80 text-xs font-mono text-zinc-200 shadow-xl backdrop-blur-md hover:border-blue-500 transition cursor-pointer';
+      miniPillEl.innerHTML =
+        '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>Swarm Replay</span>';
+      miniPillEl.addEventListener('click', () => {
+        if (miniPillEl) miniPillEl.style.display = 'none';
+        startSwarmReplay();
+      });
+      document.body.appendChild(miniPillEl);
+    }
+    miniPillEl.style.display = 'flex';
   }
 
   function createAgentPool() {
@@ -758,6 +776,8 @@
       l.el.classList.add('swarm-blank-layer');
     });
 
+    if (miniPillEl) miniPillEl.style.display = 'none';
+
     createOverlay();
     createDock();
     createAgentPool();
@@ -781,5 +801,8 @@
         startSwarmReplay();
       });
     }
+    setTimeout(() => {
+      startSwarmReplay();
+    }, 250);
   });
 })();

@@ -372,13 +372,11 @@
       if (buildTickTimer) { clearTimeout(buildTickTimer); buildTickTimer = null; }
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
-      if (scrollRafId) { cancelAnimationFrame(scrollRafId); scrollRafId = null; }
     }
 
     function restoreAllSavedText() {
       savedHTMLMap.forEach((html, el) => {
         el.classList.remove('swarm-typing-caret');
-        el.style.minHeight = '';
         el.innerHTML = html;
       });
       savedHTMLMap.clear();
@@ -440,9 +438,6 @@
       savedHTMLMap.set(el, el.innerHTML);
       const fullText = el.textContent.trim();
       if (!fullText) return;
-      // Reserve current height so typing multi-line text never shifts/shakes layout below
-      const h = el.getBoundingClientRect().height;
-      if (h > 0) el.style.minHeight = `${h}px`;
       el.textContent = '';
       el.classList.add('swarm-typing-caret');
       const stepChars = Math.max(1, Math.ceil(fullText.length / 12));
@@ -452,7 +447,6 @@
         pos += stepChars;
         if (pos >= fullText.length) {
           el.classList.remove('swarm-typing-caret');
-          el.style.minHeight = '';
           if (savedHTMLMap.has(el)) { el.innerHTML = savedHTMLMap.get(el); savedHTMLMap.delete(el); }
           return;
         }
@@ -468,25 +462,12 @@
     // On arrival → pick new random target spread across FULL viewport.
     let lastPhysicsTime = 0;
 
-    // Pick next working point around the track's current element (with breathing room on small tags)
+    // Pick a new target anywhere on viewport (makes agents roam freely)
     function pickNextTarget(a) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const tr = a.trackIdx >= 0 ? tracks[a.trackIdx] : null;
-      const r  = tr && tr.lastRect;
-      if (r && r.width > 0 && r.height > 0) {
-        const envW = Math.max(r.width,  110);
-        const envH = Math.max(r.height, 56);
-        const cx   = r.left + r.width  * 0.5;
-        const cy   = r.top  + r.height * 0.5;
-        const rx   = cx + (Math.random() - 0.5) * envW;
-        const ry   = cy + (Math.random() - 0.5) * envH;
-        a.tx = Math.max(15, Math.min(vw - 95, rx));
-        a.ty = Math.max(15, Math.min(vh - 65, ry));
-      } else {
-        a.tx = 20 + Math.random() * (vw - 110);
-        a.ty = 20 + Math.random() * (vh - 70);
-      }
+      a.tx = 20 + Math.random() * (vw - 110);
+      a.ty = 20 + Math.random() * (vh - 70);
     }
 
     // Rotate only the pointer arrow SVG smoothly toward its flight heading
@@ -578,7 +559,6 @@
     // ── Update a track's bbox to a new element ────────────────────────────
     function updateTrackOverlay(tr, rect, label) {
       if (rect.width <= 0 || rect.height <= 0) return;
-      tr.lastRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
       tr.bbox.style.opacity = '1';
       tr.bbox.style.left    = `${rect.left}px`;
       tr.bbox.style.top     = `${rect.top}px`;
@@ -588,94 +568,66 @@
       tr.bboxDim.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
     }
 
-    // ── Assign an element to a track — target agents onto/around the element ─
+    // ── Assign an element to a track — set stable a.tx/a.ty for each agent ─
+    // Agents get targets spread across the FULL viewport so they look scattered.
+    // Target = element center biased toward agent's natural screen column.
     function assignToTrack(tr, item, rect) {
       tr.currentEl = item.el;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const w  = Math.max(rect.width,  20);
-      const h  = Math.max(rect.height, 16);
-      tr.lastRect = { left: rect.left, top: rect.top, width: w, height: h };
+      const ex = rect.left + rect.width  / 2;
+      const ey = rect.top  + rect.height / 2;
 
-      // Ensure at least 110x56 working envelope so agents surround small tags cleanly
-      const envW = Math.max(w, 110);
-      const envH = Math.max(h, 56);
-      const envL = rect.left + (w - envW) * 0.5;
-      const envT = rect.top  + (h - envH) * 0.5;
-
-      const count = Math.max(1, tr.agentIndices.length);
-      tr.agentIndices.forEach((aIdx, slot) => {
-        const a  = agents[aIdx];
-        const ox = (slot + 0.5 + (Math.random() - 0.5) * 0.4) / count;
-        const oy = 0.15 + ((slot * 0.43) % 0.7) + (Math.random() - 0.5) * 0.2;
-        const tx = envL + ox * envW;
-        const ty = envT + oy * envH;
-        a.tx = Math.max(15, Math.min(vw - 95, tx));
-        a.ty = Math.max(15, Math.min(vh - 65, ty));
+      tr.agentIndices.forEach((aIdx) => {
+        const a = agents[aIdx];
+        // Spread all 14-18 agents across a 4x5 viewport grid so they never clump in one corner
+        const col = aIdx % 4;
+        const row = Math.floor(aIdx / 4) % 5;
+        const zoneX = ((col + 0.5) / 4) * vw;
+        const zoneY = ((row + 0.5) / 5) * vh;
+        // Blend 35% element position + 65% full-viewport spread + jitter
+        const tx = ex * 0.35 + zoneX * 0.65 + (Math.random() - 0.5) * vw * 0.22;
+        const ty = ey * 0.35 + zoneY * 0.65 + (Math.random() - 0.5) * vh * 0.20;
+        a.tx = Math.max(20, Math.min(vw - 100, tx));
+        a.ty = Math.max(20, Math.min(vh - 70,  ty));
       });
 
+      // Per-track offsets kept for compat (unused by new physicsLoop)
       tr.offsets = tr.agentIndices.map(() => ({ ox: 0.5, oy: 0.5 }));
     }
 
-    // ── Touring scroll (monotonic & silky 60fps exponential ease) ───────────
-    let scrollTarget   = 0;
-    let scrollCurrent  = 0;
-    let scrollRafId    = null;
-    let lastScrollTime = 0;
+    // ── Touring scroll ─────────────────────────────────────────────────────
+    let scrollTarget  = 0;
+    let scrollCurrent = 0;
+    let scrollRafId   = null;
 
     function touringScrollTo(targetY) {
-      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      scrollTarget = Math.max(0, Math.min(maxY, targetY));
+      scrollTarget = Math.max(0, targetY);
       if (scrollRafId) return;
-      scrollCurrent  = window.scrollY;
-      lastScrollTime = performance.now();
-      function step(now) {
+      function step() {
         if (!touringEnabled || !isReplaying) { scrollRafId = null; return; }
-        const dt = Math.min((now - lastScrollTime) / 1000, 0.05);
-        lastScrollTime = now;
         const diff = scrollTarget - scrollCurrent;
-        const vh   = window.innerHeight;
-        let px;
-        if (Math.abs(diff) < 0.8) {
-          px = diff;
+        if (Math.abs(diff) < 0.5) {
           scrollCurrent = scrollTarget;
           window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
           scrollRafId = null;
-        } else {
-          // Smooth exponential ease-out — zero sudden speed jumps or jitter
-          px = diff * Math.min(1, dt * 6.5);
-          scrollCurrent += px;
-          window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
-          scrollRafId = requestAnimationFrame(step);
+          return;
         }
-        // Keep agent targets & bboxes locked to scrolled elements without calling getBCR in RAF
-        if (px !== 0 && !vortexMode) {
-          agents.forEach(a => {
-            if (a.trackIdx >= 0) a.ty = Math.max(15, Math.min(vh - 65, a.ty - px));
-          });
-          tracks.forEach(tr => {
-            if (tr.lastRect && tr.currentEl) {
-              tr.lastRect.top -= px;
-              tr.bbox.style.top = `${tr.lastRect.top}px`;
-            }
-          });
-        }
+        const d  = Math.abs(diff);
+        const px = d > 120
+          ? Math.sign(diff) * Math.max(60, d * 0.22)
+          : Math.sign(diff) * Math.max(3,  d * 0.12);
+        scrollCurrent += px;
+        window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
+        scrollRafId = requestAnimationFrame(step);
       }
       scrollRafId = requestAnimationFrame(step);
     }
 
-    function touringFollow(rect, el) {
-      if (el) {
-        const pos = getComputedStyle(el).position;
-        if (pos === 'fixed' || pos === 'sticky') return;
-      }
+    function touringFollow(rect) {
       const vh = window.innerHeight;
-      if (rect.top > vh * 0.58) {
-        const nextY = window.scrollY + rect.top - vh * 0.30;
-        // Monotonic forward-only scroll so page never ping-pongs up & down
-        if (nextY > scrollTarget + 8) {
-          touringScrollTo(nextY);
-        }
+      if (rect.top > vh * 0.60 || rect.bottom < 60) {
+        touringScrollTo(window.scrollY + rect.top - vh * 0.30);
       }
     }
 
@@ -900,63 +852,14 @@
         lastPhysicsTime = performance.now();
         rafId = requestAnimationFrame(physicsLoop);
 
-        // ── Spatial-spread sliding window scheduler (supports Touring ON & OFF) ─
-        layers.forEach(item => { item._picked = false; });
-        let windowHead = 0;
+        // ── Reactive round-robin scheduler (supports Touring ON & OFF) ────
+        const trackStates = tracks.map(() => ({ queue: [], idx: 0, waiting: false }));
+        layers.forEach((item, i) => trackStates[i % NUM_TRACKS].queue.push(item));
+
         let nextTrackCursor = 0;
-        const WINDOW_SIZE = 14;
-
-        function pickNextLayerForTrack(t) {
-          while (windowHead < total && layers[windowHead]._picked) windowHead++;
-          if (windowHead >= total) return null;
-
-          const candidates = [];
-          for (let i = windowHead; i < total && candidates.length < WINDOW_SIZE; i++) {
-            const it = layers[i];
-            if (it._picked) continue;
-            const rect = it.el.getBoundingClientRect();
-            if (!touringEnabled && rect.top >= window.innerHeight + 60) continue;
-            candidates.push({ it, rect, isHead: i === windowHead });
-          }
-          if (candidates.length === 0) return null;
-
-          // Build major container first so children inside are never blocked
-          const head = candidates[0];
-          if (head.isHead) {
-            const tag = head.it.el.tagName;
-            if (tag === 'HEADER' || tag === 'SECTION' || tag === 'FOOTER' || head.it.el.id === 'hero') {
-              return head;
-            }
-          }
-
-          // Pick the candidate farthest from the other 3 tracks' current positions
-          let best = head;
-          let bestScore = -1;
-          for (const c of candidates) {
-            const cx = c.rect.left + c.rect.width  * 0.5;
-            const cy = c.rect.top  + c.rect.height * 0.5;
-            let minDist = Infinity;
-            for (let ot = 0; ot < NUM_TRACKS; ot++) {
-              if (ot === t) continue;
-              const r = tracks[ot].lastRect;
-              if (r) {
-                const ox = r.left + r.width  * 0.5;
-                const oy = r.top  + r.height * 0.5;
-                const d  = Math.hypot(cx - ox, cy - oy);
-                if (d < minDist) minDist = d;
-              }
-            }
-            const score = (minDist === Infinity ? 0 : minDist) + (c.isHead ? 45 : 0);
-            if (score > bestScore) {
-              bestScore = score;
-              best = c;
-            }
-          }
-          return best;
-        }
 
         function buildOneItem(tr, t, item, rect) {
-          if (touringEnabled && t === 0) touringFollow(rect, item.el);
+          if (touringEnabled && t === 0) touringFollow(rect);
 
           item.el.classList.remove('swarm-blank-layer');
           item.el.classList.add('swarm-wireframe-layer');
@@ -965,7 +868,7 @@
           assignToTrack(tr, item, rect);
           updateTrackOverlay(tr, rect, item.label);
 
-          const wireMs = Math.max(25, Math.round(90 / speedMultiplier));
+          const wireMs = Math.max(25, Math.round(80 / speedMultiplier));
           replayTimers.push(setTimeout(() => {
             if (!isReplaying) return;
             // Ensure no ancestor container stays blank and hides this built element
@@ -1002,18 +905,34 @@
           buildTickTimer = null;
           if (!isReplaying || isCompleted) return;
 
-          while (windowHead < total && layers[windowHead]._picked) windowHead++;
-          if (windowHead >= total) return; // enterCompletedVortex triggers on last wireMs
+          let builtThisTick = false;
+          for (let attempt = 0; attempt < NUM_TRACKS; attempt++) {
+            const t  = (nextTrackCursor + attempt) % NUM_TRACKS;
+            const st = trackStates[t];
+            if (st.idx >= st.queue.length) continue;
 
-          const t = nextTrackCursor;
-          nextTrackCursor = (nextTrackCursor + 1) % NUM_TRACKS;
+            const item = st.queue[st.idx];
+            const rect = item.el.getBoundingClientRect();
+            const canBuild = touringEnabled || (rect.top < window.innerHeight + 60);
 
-          const pick = pickNextLayerForTrack(t);
-          if (pick) {
+            if (canBuild) {
+              st.waiting = false;
+              st.idx++;
+              buildOneItem(tracks[t], t, item, rect);
+              nextTrackCursor = (t + 1) % NUM_TRACKS;
+              builtThisTick = true;
+              break;
+            } else {
+              st.waiting = true;
+            }
+          }
+
+          const allQueuedDone = trackStates.every(s => s.idx >= s.queue.length);
+          if (allQueuedDone) return; // enterCompletedVortex will trigger when last wireMs finishes
+
+          if (builtThisTick) {
             vortexMode = false;
-            pick.it._picked = true;
-            buildOneItem(tracks[t], t, pick.it, pick.rect);
-            const stepMs = Math.max(24, Math.round(105 / speedMultiplier));
+            const stepMs = Math.max(18, Math.round(70 / speedMultiplier));
             buildTickTimer = setTimeout(tickBuilder, stepMs);
           } else {
             // Manual scroll mode: all visible layers built, waiting for user to scroll down
@@ -1025,12 +944,19 @@
           }
         }
 
-        // Kick off 1st layer per track immediately so header + hero start appearing right after 'K'
-        for (let t = 0; t < NUM_TRACKS; t++) {
-          const pick = pickNextLayerForTrack(t);
-          if (pick) {
-            pick.it._picked = true;
-            buildOneItem(tracks[t], t, pick.it, pick.rect);
+        // Immediately kick off the first 2 layers per track so the UI (header + hero)
+        // begins appearing right as the 'K' bursts outward, with zero black delay
+        for (let round = 0; round < 2; round++) {
+          for (let t = 0; t < NUM_TRACKS; t++) {
+            const st = trackStates[t];
+            if (st.idx < st.queue.length) {
+              const item = st.queue[st.idx];
+              const rect = item.el.getBoundingClientRect();
+              if (touringEnabled || rect.top < window.innerHeight + 60) {
+                st.idx++;
+                buildOneItem(tracks[t], t, item, rect);
+              }
+            }
           }
         }
 

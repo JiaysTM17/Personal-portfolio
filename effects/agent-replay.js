@@ -468,23 +468,12 @@
     // On arrival → pick new random target spread across FULL viewport.
     let lastPhysicsTime = 0;
 
-    // Pick next working point balanced around the track's current element
+    // Pick a new target anywhere on viewport (exact f20a4b4 agent motion)
     function pickNextTarget(a) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const tr = a.trackIdx >= 0 ? tracks[a.trackIdx] : null;
-      const r  = tr && tr.lastRect;
-      if (r && r.width > 0 && r.height > 0) {
-        const cx = r.left + r.width  * 0.5;
-        const cy = r.top  + r.height * 0.5;
-        const rx = cx + (Math.random() - 0.5) * Math.max(r.width, 160);
-        const ry = cy + (Math.random() - 0.5) * Math.max(r.height, 90);
-        a.tx = Math.max(15, Math.min(vw - 95, rx));
-        a.ty = Math.max(15, Math.min(vh - 65, ry));
-      } else {
-        a.tx = 20 + Math.random() * (vw - 110);
-        a.ty = 20 + Math.random() * (vh - 70);
-      }
+      a.tx = 20 + Math.random() * (vw - 110);
+      a.ty = 20 + Math.random() * (vh - 70);
     }
 
     // Rotate only the pointer arrow SVG smoothly toward its flight heading
@@ -586,26 +575,24 @@
       tr.bboxDim.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
     }
 
-    // ── Assign an element to a track — balanced around element (70% element, 30% spread) ─
+    // ── Assign an element to a track — exact f20a4b4 spread ────────────────
     function assignToTrack(tr, item, rect) {
       tr.currentEl = item.el;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const w  = Math.max(rect.width,  20);
-      const h  = Math.max(rect.height, 16);
-      tr.lastRect = { left: rect.left, top: rect.top, width: w, height: h };
-      const ex = rect.left + w * 0.5;
-      const ey = rect.top  + h * 0.5;
+      const ex = rect.left + rect.width  / 2;
+      const ey = rect.top  + rect.height / 2;
 
       tr.agentIndices.forEach((aIdx) => {
         const a = agents[aIdx];
-        // Spread evenly across a 4x5 grid, but keep 70% anchored to the actual element being built
+        // Spread all 14-18 agents across a 4x5 viewport grid so they never clump in one corner
         const col = aIdx % 4;
         const row = Math.floor(aIdx / 4) % 5;
         const zoneX = ((col + 0.5) / 4) * vw;
         const zoneY = ((row + 0.5) / 5) * vh;
-        const tx = ex * 0.70 + zoneX * 0.30 + (Math.random() - 0.5) * Math.max(w * 0.6, 110);
-        const ty = ey * 0.70 + zoneY * 0.30 + (Math.random() - 0.5) * Math.max(h * 0.6, 70);
+        // Blend 35% element position + 65% full-viewport spread + jitter
+        const tx = ex * 0.35 + zoneX * 0.65 + (Math.random() - 0.5) * vw * 0.22;
+        const ty = ey * 0.35 + zoneY * 0.65 + (Math.random() - 0.5) * vh * 0.20;
         a.tx = Math.max(20, Math.min(vw - 100, tx));
         a.ty = Math.max(20, Math.min(vh - 70,  ty));
       });
@@ -644,11 +631,8 @@
           window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
           scrollRafId = requestAnimationFrame(step);
         }
-        // Keep agent targets & bboxes synced smoothly with scroll delta
+        // Keep bboxes synced smoothly with scroll delta
         if (px !== 0 && !vortexMode) {
-          agents.forEach(a => {
-            if (a.trackIdx >= 0) a.ty = Math.max(15, Math.min(vh - 65, a.ty - px));
-          });
           tracks.forEach(tr => {
             if (tr.lastRect && tr.currentEl) {
               tr.lastRect.top -= px;

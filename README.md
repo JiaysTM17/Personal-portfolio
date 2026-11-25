@@ -4,7 +4,7 @@
 
 **Computer Science Student (HCMUTE) • Software & Fullstack Developer**
 
-[![Live Portfolio](https://img.shields.io/badge/Live_Demo-GitHub_Pages-2563eb?style=for-the-badge&logo=githubpages&logoColor=white)](https://jiaystm17.github.io/Personal-portfolio/)
+[![Live Portfolio](https://img.shields.io/badge/Live_Portfolio-kiet--portfolio.vercel.app-2563eb?style=for-the-badge&logo=vercel&logoColor=white)](https://kiet-portfolio.vercel.app)
 [![GitHub Profile](https://img.shields.io/badge/GitHub-@JiaysTM17-12151d?style=for-the-badge&logo=github&logoColor=white)](https://github.com/JiaysTM17)
 [![Email](https://img.shields.io/badge/Email-truonggiakiet110806@gmail.com-059669?style=for-the-badge&logo=gmail&logoColor=white)](mailto:truonggiakiet110806@gmail.com)
 

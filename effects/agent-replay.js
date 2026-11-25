@@ -373,6 +373,7 @@
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
       if (scrollRafId) { cancelAnimationFrame(scrollRafId); scrollRafId = null; }
+      overlay.querySelectorAll('.agent-intro-extra').forEach(el => el.remove());
     }
 
     function restoreAllSavedText() {
@@ -658,62 +659,90 @@
       }
     }
 
-    // ── 3.2s Intro: scattered 2D → romantic glide into 'K' → hold → build ─
-    // ALL 18 agents visible during intro. No circular ring!
-    // When 'K' finishes holding, agents immediately fly to build the UI.
+    // ── 4.7s Intro: scattered 2D → romantic glide into 'HELLO' → hold → normal 14-18 build ─
+    // Spawns enough extra temporary arrowheads for 'HELLO' (47 points), then removes extras
+    // when building begins so normal 14-18 agent behavior is 100% unchanged.
     let introRafId = null;
 
-    // 18 balanced geometric points forming a clean capital letter 'K'
-    const K_POINTS = [
-      // Left vertical stem (7 points, evenly spaced top to bottom)
-      [-0.36, -0.50], [-0.36, -0.33], [-0.36, -0.17], [-0.36,  0.00],
-      [-0.36,  0.17], [-0.36,  0.33], [-0.36,  0.50],
-      // Upper diagonal arm (5 points from stem center to top-right)
-      [-0.21, -0.09], [-0.07, -0.19], [ 0.07, -0.29], [ 0.21, -0.39], [ 0.35, -0.50],
-      // Lower diagonal leg (6 points kicking cleanly from junction to bottom-right)
-      [-0.14,  0.00], [-0.03,  0.10], [ 0.07,  0.20], [ 0.17,  0.30], [ 0.27,  0.40], [ 0.37,  0.50],
+    // 46 balanced normalized points forming crisp "HELLO" across [-0.48..0.50, -0.50..0.50]
+    const HELLO_POINTS = [
+      // H (11 pts: -0.48 .. -0.32)
+      [-0.48,-0.50], [-0.48,-0.25], [-0.48,0.00], [-0.48,0.25], [-0.48,0.50],
+      [-0.40, 0.00],
+      [-0.32,-0.50], [-0.32,-0.25], [-0.32,0.00], [-0.32,0.25], [-0.32,0.50],
+      // E (11 pts: -0.24 .. -0.10)
+      [-0.24,-0.50], [-0.24,-0.25], [-0.24,0.00], [-0.24,0.25], [-0.24,0.50],
+      [-0.17,-0.50], [-0.10,-0.50],
+      [-0.17, 0.00], [-0.11, 0.00],
+      [-0.17, 0.50], [-0.10, 0.50],
+      // L (7 pts: -0.02 .. 0.10)
+      [-0.02,-0.50], [-0.02,-0.25], [-0.02,0.00], [-0.02,0.25], [-0.02,0.50],
+      [ 0.04, 0.50], [ 0.10, 0.50],
+      // L (7 pts: 0.17 .. 0.29)
+      [ 0.17,-0.50], [ 0.17,-0.25], [ 0.17,0.00], [ 0.17,0.25], [ 0.17,0.50],
+      [ 0.23, 0.50], [ 0.29, 0.50],
+      // O (10 pts: cx=0.43, rx=0.075, ry=0.50)
+      [ 0.43,-0.50], [ 0.474,-0.40], [ 0.501,-0.15], [ 0.501, 0.15], [ 0.474, 0.40],
+      [ 0.43, 0.50], [ 0.386, 0.40], [ 0.359, 0.15], [ 0.359,-0.15], [ 0.386,-0.40],
     ];
 
     function runIntro(onDone) {
       overlay.style.display = 'block';
+      overlay.querySelectorAll('.agent-intro-extra').forEach(el => el.remove());
+
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const kW = Math.min(240, vw * 0.36);
-      const kH = Math.min(280, vh * 0.46);
+      const helloW = Math.min(760, vw * 0.80);
+      const helloH = Math.min(180, vh * 0.30);
+      const totalIntro = HELLO_POINTS.length;
 
-      // Hide text labels during 'K' so only the 18 clean colorful arrowheads form 'K'
+      // Hide text labels on the 18 main agents during 'HELLO'
       agents.forEach(a => {
         const lbl = a.cur.querySelector('.agent-cursor-label');
         if (lbl) lbl.style.opacity = '0';
       });
 
-      // True 2D scatter across a 6x3 grid (NOT a circle!)
-      const cols = 6, rows = 3;
-      const slots = Array.from({ length: AGENTS_TOTAL }, (_, idx) => idx);
-      // Deterministic shuffle so scatter is organic every time
+      // Build intro actors: 0..17 reuse main agents, 18..45 are temporary arrowheads
+      const introActors = [];
+      for (let i = 0; i < totalIntro; i++) {
+        if (i < AGENTS_TOTAL) {
+          introActors.push(agents[i]);
+        } else {
+          const color = AGENT_COLORS[i % AGENT_COLORS.length];
+          const cur   = document.createElement('div');
+          cur.className = 'agent-cursor agent-intro-extra';
+          cur.style.cssText = 'opacity:0;position:fixed;pointer-events:none;z-index:9999;';
+          cur.innerHTML = `<span class="agent-arrow" style="display:inline-block;width:16px;height:16px;transform-origin:center center;">${createPointerSVG(color)}</span>`;
+          overlay.appendChild(cur);
+          introActors.push({ cur, arrowEl: cur.querySelector('.agent-arrow'), angle: 0 });
+        }
+      }
+
+      // True 2D scatter across an 8x6 grid across the entire viewport
+      const cols = 8, rows = 6;
+      const slots = Array.from({ length: totalIntro }, (_, idx) => idx);
       slots.sort((a, b) => Math.sin(a * 12.9898) - Math.sin(b * 78.233));
 
-      const ipos = agents.map((a, i) => {
+      const ipos = introActors.map((a, i) => {
         const cell = slots[i];
         const col  = cell % cols;
         const row  = Math.floor(cell / cols);
-        const sx   = Math.max(24, Math.min(vw - 60, ((col + 0.15 + Math.random() * 0.7) / cols) * vw));
-        const sy   = Math.max(24, Math.min(vh - 60, ((row + 0.15 + Math.random() * 0.7) / rows) * vh));
+        const sx   = Math.max(24, Math.min(vw - 40, ((col + 0.15 + Math.random() * 0.7) / cols) * vw));
+        const sy   = Math.max(24, Math.min(vh - 40, ((row + 0.15 + Math.random() * 0.7) / rows) * vh));
 
-        const kp = K_POINTS[i % K_POINTS.length];
-        const kx = vw * 0.5 + kp[0] * kW;
-        const ky = vh * 0.5 + kp[1] * kH;
+        const kp = HELLO_POINTS[i];
+        const kx = vw * 0.5 + kp[0] * helloW;
+        const ky = vh * 0.5 + kp[1] * helloH;
 
-        // Sweeping Bezier control point for a soft, romantic floating curve
         const midX = (sx + kx) * 0.5;
         const midY = (sy + ky) * 0.5;
         const dx   = kx - sx;
         const dy   = ky - sy;
-        const curveSign = (i % 2 === 0 ? 1 : -1) * (0.28 + (i % 3) * 0.12);
+        const curveSign = (i % 2 === 0 ? 1 : -1) * (0.24 + (i % 3) * 0.10);
         const cx1 = midX - dy * curveSign;
         const cy1 = midY + dx * curveSign;
 
-        const delayFrac = (i / AGENTS_TOTAL) * 0.12;
+        const delayFrac = (i / totalIntro) * 0.12;
 
         a.cur.style.transform = `translate3d(${sx.toFixed(1)}px,${sy.toFixed(1)}px,0)`;
         a.cur.style.opacity   = '1';
@@ -730,20 +759,19 @@
         const elapsed = now - introStart;
         const frac    = Math.min(elapsed / INTRO_DUR, 1);
 
-        agents.forEach((a, i) => {
+        introActors.forEach((a, i) => {
           const ip = ipos[i];
           let nx, ny;
 
           if (frac < 0.43) {
-            // Phase 1 (0 -> ~2.0s): Romantic, unhurried curve from 2D scatter into 'K'
+            // Phase 1 (0 -> ~2.0s): Romantic curved glide from 2D scatter into 'HELLO'
             const localP = Math.max(0, Math.min(1, (frac - ip.delayFrac) / (0.43 - ip.delayFrac)));
-            // Smooth easeInOutSine for gentle deceleration into position
             const t = -(Math.cos(Math.PI * localP) - 1) / 2;
             const omt = 1 - t;
             nx = omt * omt * ip.sx + 2 * omt * t * ip.cx1 + t * t * ip.kx;
             ny = omt * omt * ip.sy + 2 * omt * t * ip.cy1 + t * t * ip.ky;
           } else {
-            // Phase 2 (~2.0s -> 4.7s, ~2.7s hold): Hold crisp 'K' with gentle floating breath
+            // Phase 2 (~2.0s -> 4.7s): Hold crisp 'HELLO' with gentle floating breath
             const breathe = Math.sin((now * 0.0028) + i * 0.35) * 1.8;
             nx = ip.kx;
             ny = ip.ky + breathe;
@@ -755,7 +783,7 @@
           ip.y = ny;
 
           if (frac >= 0.43) {
-            // Each agent stays on its 'K' spot and looks around independently (up/down/left/right)
+            // Each arrowhead looks around independently while holding 'HELLO'
             const holdT    = (frac - 0.43) / 0.57;
             const dirSign  = i % 2 === 0 ? 1 : -1;
             const baseLook = ((i * 137.5) % 360) - 180;
@@ -774,7 +802,8 @@
 
         if (elapsed >= INTRO_DUR) {
           introRafId = null;
-          // Restore labels & seed physics directly from 'K' positions so they burst straight into building!
+          // Remove extra intro-only cursors so normal 14-18 agents take over seamlessly
+          overlay.querySelectorAll('.agent-intro-extra').forEach(el => el.remove());
           agents.forEach((a, i) => {
             a.x = ipos[i].x; a.y = ipos[i].y;
             const lbl = a.cur.querySelector('.agent-cursor-label');

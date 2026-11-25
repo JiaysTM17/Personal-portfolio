@@ -372,11 +372,13 @@
       if (buildTickTimer) { clearTimeout(buildTickTimer); buildTickTimer = null; }
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
+      if (scrollRafId) { cancelAnimationFrame(scrollRafId); scrollRafId = null; }
     }
 
     function restoreAllSavedText() {
       savedHTMLMap.forEach((html, el) => {
         el.classList.remove('swarm-typing-caret');
+        el.style.minHeight = '';
         el.innerHTML = html;
       });
       savedHTMLMap.clear();
@@ -438,6 +440,9 @@
       savedHTMLMap.set(el, el.innerHTML);
       const fullText = el.textContent.trim();
       if (!fullText) return;
+      // Lock height during typing so multi-line text never shifts/jitters layout below
+      const h = el.getBoundingClientRect().height;
+      if (h > 0) el.style.minHeight = `${h}px`;
       el.textContent = '';
       el.classList.add('swarm-typing-caret');
       const stepChars = Math.max(1, Math.ceil(fullText.length / 12));
@@ -447,6 +452,7 @@
         pos += stepChars;
         if (pos >= fullText.length) {
           el.classList.remove('swarm-typing-caret');
+          el.style.minHeight = '';
           if (savedHTMLMap.has(el)) { el.innerHTML = savedHTMLMap.get(el); savedHTMLMap.delete(el); }
           return;
         }
@@ -462,12 +468,23 @@
     // On arrival → pick new random target spread across FULL viewport.
     let lastPhysicsTime = 0;
 
-    // Pick a new target anywhere on viewport (makes agents roam freely)
+    // Pick next working point balanced around the track's current element
     function pickNextTarget(a) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      a.tx = 20 + Math.random() * (vw - 110);
-      a.ty = 20 + Math.random() * (vh - 70);
+      const tr = a.trackIdx >= 0 ? tracks[a.trackIdx] : null;
+      const r  = tr && tr.lastRect;
+      if (r && r.width > 0 && r.height > 0) {
+        const cx = r.left + r.width  * 0.5;
+        const cy = r.top  + r.height * 0.5;
+        const rx = cx + (Math.random() - 0.5) * Math.max(r.width, 160);
+        const ry = cy + (Math.random() - 0.5) * Math.max(r.height, 90);
+        a.tx = Math.max(15, Math.min(vw - 95, rx));
+        a.ty = Math.max(15, Math.min(vh - 65, ry));
+      } else {
+        a.tx = 20 + Math.random() * (vw - 110);
+        a.ty = 20 + Math.random() * (vh - 70);
+      }
     }
 
     // Rotate only the pointer arrow SVG smoothly toward its flight heading
@@ -559,6 +576,7 @@
     // ── Update a track's bbox to a new element ────────────────────────────
     function updateTrackOverlay(tr, rect, label) {
       if (rect.width <= 0 || rect.height <= 0) return;
+      tr.lastRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
       tr.bbox.style.opacity = '1';
       tr.bbox.style.left    = `${rect.left}px`;
       tr.bbox.style.top     = `${rect.top}px`;
@@ -568,66 +586,91 @@
       tr.bboxDim.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
     }
 
-    // ── Assign an element to a track — set stable a.tx/a.ty for each agent ─
-    // Agents get targets spread across the FULL viewport so they look scattered.
-    // Target = element center biased toward agent's natural screen column.
+    // ── Assign an element to a track — balanced around element (70% element, 30% spread) ─
     function assignToTrack(tr, item, rect) {
       tr.currentEl = item.el;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const ex = rect.left + rect.width  / 2;
-      const ey = rect.top  + rect.height / 2;
+      const w  = Math.max(rect.width,  20);
+      const h  = Math.max(rect.height, 16);
+      tr.lastRect = { left: rect.left, top: rect.top, width: w, height: h };
+      const ex = rect.left + w * 0.5;
+      const ey = rect.top  + h * 0.5;
 
       tr.agentIndices.forEach((aIdx) => {
         const a = agents[aIdx];
-        // Spread all 14-18 agents across a 4x5 viewport grid so they never clump in one corner
+        // Spread evenly across a 4x5 grid, but keep 70% anchored to the actual element being built
         const col = aIdx % 4;
         const row = Math.floor(aIdx / 4) % 5;
         const zoneX = ((col + 0.5) / 4) * vw;
         const zoneY = ((row + 0.5) / 5) * vh;
-        // Blend 35% element position + 65% full-viewport spread + jitter
-        const tx = ex * 0.35 + zoneX * 0.65 + (Math.random() - 0.5) * vw * 0.22;
-        const ty = ey * 0.35 + zoneY * 0.65 + (Math.random() - 0.5) * vh * 0.20;
+        const tx = ex * 0.70 + zoneX * 0.30 + (Math.random() - 0.5) * Math.max(w * 0.6, 110);
+        const ty = ey * 0.70 + zoneY * 0.30 + (Math.random() - 0.5) * Math.max(h * 0.6, 70);
         a.tx = Math.max(20, Math.min(vw - 100, tx));
         a.ty = Math.max(20, Math.min(vh - 70,  ty));
       });
 
-      // Per-track offsets kept for compat (unused by new physicsLoop)
       tr.offsets = tr.agentIndices.map(() => ({ ox: 0.5, oy: 0.5 }));
     }
 
-    // ── Touring scroll ─────────────────────────────────────────────────────
-    let scrollTarget  = 0;
-    let scrollCurrent = 0;
-    let scrollRafId   = null;
+    // ── Touring scroll (monotonic & silky 60fps exponential ease) ───────────
+    let scrollTarget   = 0;
+    let scrollCurrent  = 0;
+    let scrollRafId    = null;
+    let lastScrollTime = 0;
 
     function touringScrollTo(targetY) {
-      scrollTarget = Math.max(0, targetY);
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      scrollTarget = Math.max(0, Math.min(maxY, targetY));
       if (scrollRafId) return;
-      function step() {
+      scrollCurrent  = window.scrollY;
+      lastScrollTime = performance.now();
+      function step(now) {
         if (!touringEnabled || !isReplaying) { scrollRafId = null; return; }
+        const dt = Math.min((now - lastScrollTime) / 1000, 0.05);
+        lastScrollTime = now;
         const diff = scrollTarget - scrollCurrent;
-        if (Math.abs(diff) < 0.5) {
+        const vh   = window.innerHeight;
+        let px;
+        if (Math.abs(diff) < 0.8) {
+          px = diff;
           scrollCurrent = scrollTarget;
           window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
           scrollRafId = null;
-          return;
+        } else {
+          // Smooth exponential ease-out — zero sudden speed jumps or jitter
+          px = diff * Math.min(1, dt * 6.5);
+          scrollCurrent += px;
+          window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
+          scrollRafId = requestAnimationFrame(step);
         }
-        const d  = Math.abs(diff);
-        const px = d > 120
-          ? Math.sign(diff) * Math.max(60, d * 0.22)
-          : Math.sign(diff) * Math.max(3,  d * 0.12);
-        scrollCurrent += px;
-        window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
-        scrollRafId = requestAnimationFrame(step);
+        // Keep agent targets & bboxes synced smoothly with scroll delta
+        if (px !== 0 && !vortexMode) {
+          agents.forEach(a => {
+            if (a.trackIdx >= 0) a.ty = Math.max(15, Math.min(vh - 65, a.ty - px));
+          });
+          tracks.forEach(tr => {
+            if (tr.lastRect && tr.currentEl) {
+              tr.lastRect.top -= px;
+              tr.bbox.style.top = `${tr.lastRect.top}px`;
+            }
+          });
+        }
       }
       scrollRafId = requestAnimationFrame(step);
     }
 
-    function touringFollow(rect) {
+    function touringFollow(rect, el) {
+      if (el) {
+        const pos = getComputedStyle(el).position;
+        if (pos === 'fixed' || pos === 'sticky') return;
+      }
       const vh = window.innerHeight;
-      if (rect.top > vh * 0.60 || rect.bottom < 60) {
-        touringScrollTo(window.scrollY + rect.top - vh * 0.30);
+      if (rect.top > vh * 0.58) {
+        const nextY = window.scrollY + rect.top - vh * 0.30;
+        if (nextY > scrollTarget + 8) {
+          touringScrollTo(nextY);
+        }
       }
     }
 
@@ -859,7 +902,7 @@
         let nextTrackCursor = 0;
 
         function buildOneItem(tr, t, item, rect) {
-          if (touringEnabled && t === 0) touringFollow(rect);
+          if (touringEnabled && t === 0) touringFollow(rect, item.el);
 
           item.el.classList.remove('swarm-blank-layer');
           item.el.classList.add('swarm-wireframe-layer');

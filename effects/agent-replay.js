@@ -13,7 +13,7 @@
   const MIN_AGENTS    = 14;
   const MAX_AGENTS    = 18;
   const AGENTS_TOTAL  = 18;
-  const INTRO_DUR     = 3200; // scatter -> romantic glide to 'K' -> hold -> go build
+  const INTRO_DUR     = 4700; // ~2.0s glide to 'K' + ~2.7s hold 'K' -> build
 
   const AGENT_COLORS = [
     '#3b82f6','#8b5cf6','#ec4899','#f59e0b',
@@ -229,8 +229,8 @@
           const r = el.getBoundingClientRect();
           if (r.width <= 0 || r.height <= 0) return; // skip hidden / display:none elements
           seen.add(el);
-          const hasComplex = el.querySelectorAll('div, svg, img').length > 0;
-          const mode = (item.type === 'text' && !hasComplex) ? 'text' : 'box';
+          // Only type leaf text nodes (no child tags like <span>/<strong>) so parent innerHTML never snapshots half-typed children
+          const mode = (item.type === 'text' && el.children.length === 0) ? 'text' : 'box';
           list.push({ el, label: idx > 0 ? `${item.label}_${idx + 1}` : item.label, mode });
         }
       });
@@ -434,7 +434,8 @@
     }
 
     function typeElementText(el, speed) {
-      if (!savedHTMLMap.has(el)) savedHTMLMap.set(el, el.innerHTML);
+      if (savedHTMLMap.has(el) || el.children.length > 0) return;
+      savedHTMLMap.set(el, el.innerHTML);
       const fullText = el.textContent.trim();
       if (!fullText) return;
       el.textContent = '';
@@ -706,16 +707,16 @@
           const ip = ipos[i];
           let nx, ny;
 
-          if (frac < 0.62) {
-            // Phase 1 (0 -> 2.0s): Romantic, unhurried curve from 2D scatter into 'K'
-            const localP = Math.max(0, Math.min(1, (frac - ip.delayFrac) / (0.62 - ip.delayFrac)));
+          if (frac < 0.43) {
+            // Phase 1 (0 -> ~2.0s): Romantic, unhurried curve from 2D scatter into 'K'
+            const localP = Math.max(0, Math.min(1, (frac - ip.delayFrac) / (0.43 - ip.delayFrac)));
             // Smooth easeInOutSine for gentle deceleration into position
             const t = -(Math.cos(Math.PI * localP) - 1) / 2;
             const omt = 1 - t;
             nx = omt * omt * ip.sx + 2 * omt * t * ip.cx1 + t * t * ip.kx;
             ny = omt * omt * ip.sy + 2 * omt * t * ip.cy1 + t * t * ip.ky;
           } else {
-            // Phase 2 (2.0s -> 3.2s, ~1.2s hold): Hold crisp 'K' with gentle floating breath
+            // Phase 2 (~2.0s -> 4.7s, ~2.7s hold): Hold crisp 'K' with gentle floating breath
             const breathe = Math.sin((now * 0.0028) + i * 0.35) * 1.8;
             nx = ip.kx;
             ny = ip.ky + breathe;
@@ -726,9 +727,9 @@
           ip.x = nx;
           ip.y = ny;
 
-          if (frac >= 0.62) {
+          if (frac >= 0.43) {
             // Each agent stays on its 'K' spot and looks around independently (up/down/left/right)
-            const holdT    = (frac - 0.62) / 0.38;
+            const holdT    = (frac - 0.43) / 0.57;
             const dirSign  = i % 2 === 0 ? 1 : -1;
             const baseLook = ((i * 137.5) % 360) - 180;
             const swing    = Math.sin(holdT * Math.PI * (1.8 + (i % 4) * 0.45) + i) * (75 + (i % 3) * 35);

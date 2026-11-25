@@ -1,8 +1,11 @@
 // Swarm Rebuild — Authentic Full-Page Multi-Agent UI/UX Build Replay
 // Clears the canvas, sketches wireframes, types headings with I-beam carets,
-// aligns bounding boxes with 18 agent cursors, supports 1x/2x/3x speed, Touring auto-scroll & Web Audio SFX.
+// dynamically scales 14–18 agent cursors, supports live 1x/2x/3x speed, Touring auto-scroll & Web Audio SFX.
 
 (function () {
+  const MIN_AGENTS = 14;
+  const MAX_AGENTS = 18;
+
   const AGENT_COLORS = [
     '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b',
     '#10b981', '#06b6d4', '#f43f5e', '#6366f1', '#14b8a6'
@@ -16,54 +19,66 @@
     'Font-Bot', 'Deploy-1'
   ];
 
-  // Collect layers across the ENTIRE page from top to bottom
+  // Granular selectors across the ENTIRE page (300+ layers)
   const LAYER_QUERY = [
-    { sel: 'header a.group', label: 'BrandLogo', type: 'box' },
+    { sel: 'header a.group span', label: 'BrandLogo', type: 'text' },
     { sel: 'header nav a', label: 'NavLink', type: 'text' },
-    { sel: 'header .hidden.md\\:flex', label: 'HeaderActions', type: 'box' },
-    { sel: '#hero .inline-flex.rounded-full', label: 'StudentBadge', type: 'box' },
+    { sel: 'header button, header a.rounded-full, header a.rounded-lg', label: 'HeaderAction', type: 'box' },
+    { sel: '#hero .inline-flex.rounded-full, #hero .inline-flex.rounded-full span', label: 'StudentBadge', type: 'box' },
     { sel: '#hero .font-handwriting', label: 'Greeting', type: 'text' },
-    { sel: '#hero h1', label: 'HeroTitle', type: 'text' },
+    { sel: '#hero h1, #hero h1 span', label: 'HeroTitle', type: 'text' },
     { sel: '#hero h2', label: 'RoleTitle', type: 'text' },
-    { sel: '#hero p.text-gray-300', label: 'HeroBio', type: 'box' },
+    { sel: '#hero p', label: 'HeroBio', type: 'text' },
     { sel: '#hero .font-display.font-black.tracking-tighter', label: 'PortfolioBg', type: 'box' },
     { sel: '#hero img[alt*="Trương Gia Kiệt"]', label: 'PortraitCutout', type: 'box' },
-    { sel: '#hero a[href="#works"]', label: 'PrimaryCTA', type: 'box' },
-    { sel: '#hero a[href*="github.com"]', label: 'GitHubCTA', type: 'box' },
-    { sel: '#hero .flex.flex-wrap.items-center.gap-5', label: 'QuickContact', type: 'box' },
-    { sel: '#hero .md\\:col-span-2 > a', label: 'HeroStat', type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] h2', label: 'BentoHeading', type: 'text' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-6', label: 'BentoCard', type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-7', label: 'TechMatrix', type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-5', label: 'StudioClock', type: 'box' },
-    { sel: '#works h2', label: 'WorksTitle', type: 'text' },
+    { sel: '#hero a', label: 'HeroCTA', type: 'box' },
+    { sel: '#hero .md\\:col-span-2 > a, #hero .md\\:col-span-2 > a > div', label: 'HeroStat', type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] h2, section.bg-\\[\\#0b0c10\\] h3', label: 'BentoHeading', type: 'text' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] p', label: 'BentoCopy', type: 'text' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] span, section.bg-\\[\\#0b0c10\\] a, section.bg-\\[\\#0b0c10\\] button', label: 'BentoItem', type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-6, section.bg-\\[\\#0b0c10\\] .lg\\:col-span-7, section.bg-\\[\\#0b0c10\\] .lg\\:col-span-5', label: 'BentoCard', type: 'box' },
+    { sel: '#works h2, #works h3', label: 'WorksHeading', type: 'text' },
+    { sel: '#works p', label: 'WorksDesc', type: 'text' },
     { sel: '#project-filters button', label: 'FilterTab', type: 'box' },
     { sel: '#projects-grid .project-card', label: 'ProjectCard', type: 'box' },
-    { sel: '#services h2', label: 'ServicesTitle', type: 'text' },
-    { sel: '#services .accordion-item', label: 'TechAccordion', type: 'box' },
-    { sel: '#docs h2', label: 'DocsTitle', type: 'text' },
-    { sel: '#docs .space-y-4 > div', label: 'ArchitectureDoc', type: 'box' },
-    { sel: '#about h2', label: 'AboutTitle', type: 'text' },
-    { sel: '#about .lg\\:col-span-6', label: 'AboutColumn', type: 'box' },
-    { sel: '#journey h2', label: 'JourneyTitle', type: 'text' },
-    { sel: '#journey .space-y-6 > div', label: 'TimelineItem', type: 'box' },
-    { sel: '#journey .bg-\\[\\#f5f6f8\\]', label: 'ResumeCard', type: 'box' },
-    { sel: '#contact h2', label: 'ContactTitle', type: 'text' },
-    { sel: '#contact #copy-email-btn', label: 'EmailCopyCard', type: 'box' },
-    { sel: '#contact-form', label: 'ContactForm', type: 'box' },
-    { sel: 'footer', label: 'Footer', type: 'box' }
+    { sel: '#projects-grid .project-card img', label: 'ProjectThumb', type: 'box' },
+    { sel: '#projects-grid .project-card span, #projects-grid .project-card a, #projects-grid .project-card button', label: 'ProjectMeta', type: 'box' },
+    { sel: '#services h2, #services h3', label: 'ServicesHeading', type: 'text' },
+    { sel: '#services p', label: 'ServicesCopy', type: 'text' },
+    { sel: '#services .accordion-item, #services .accordion-item button, #services .accordion-item span, #services .accordion-item li', label: 'TechItem', type: 'box' },
+    { sel: '#docs h2, #docs h3', label: 'DocsHeading', type: 'text' },
+    { sel: '#docs p', label: 'DocsCopy', type: 'text' },
+    { sel: '#docs .space-y-4 > div, #docs span, #docs a, #docs button', label: 'DocNode', type: 'box' },
+    { sel: '#about h2, #about h3', label: 'AboutHeading', type: 'text' },
+    { sel: '#about p', label: 'AboutCopy', type: 'text' },
+    { sel: '#about img, #about span, #about .rounded-xl, #about .rounded-2xl', label: 'AboutDetail', type: 'box' },
+    { sel: '#journey h2, #journey h3', label: 'JourneyHeading', type: 'text' },
+    { sel: '#journey p', label: 'JourneyCopy', type: 'text' },
+    { sel: '#journey .space-y-6 > div, #journey span, #journey a, #journey li', label: 'TimelineNode', type: 'box' },
+    { sel: '#contact h2, #contact h3', label: 'ContactHeading', type: 'text' },
+    { sel: '#contact p, #contact label', label: 'ContactLabel', type: 'text' },
+    { sel: '#contact #copy-email-btn, #contact input, #contact textarea, #contact button, #contact a, #contact span', label: 'ContactControl', type: 'box' },
+    { sel: 'footer a, footer p, footer span, footer button', label: 'FooterItem', type: 'box' },
+    // Broad granular sweep so no visible sub-element is left behind
+    { sel: 'main section h4, main section li, main section svg, main section img, main section span, main section a, main section button, main section p', label: 'UILayer', type: 'box' }
   ];
 
   let isReplaying = false;
   let touringEnabled = true;
-  let soundEnabled = false; // User can toggle sound ON anytime
-  let speedMultiplier = 1;  // Cycles 1 -> 2 -> 3
+  let soundEnabled = false;
+  let speedMultiplier = 1; // 1x -> 2x -> 3x
+  let rafId = null;
+  let lastTs = 0;
+  let cursorAccum = 0;
+  let stepAccum = 0;
+  let scrollFloatY = 0;
+  let targetScrollY = 0;
+  let activeAgentsCount = 16;
+
   let replayTimers = [];
-  let cursorLoopId = null;
   let audioCtx = null;
   let savedHTMLMap = new Map();
 
-  // Web Audio API Synthesizer for crisp UI design sounds (no external files required)
   function ensureAudio() {
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -92,9 +107,9 @@
     } catch (_) {}
   }
 
-  function playWireframeSound() { playTone(520 + Math.random() * 140, 0.04, 0.02, 'triangle'); }
-  function playTypeSound() { playTone(780 + Math.random() * 200, 0.025, 0.015, 'square'); }
-  function playSnapSound() { playTone(380 + Math.random() * 180, 0.05, 0.025, 'sine'); }
+  function playWireframeSound() { playTone(520 + Math.random() * 140, 0.04, 0.018, 'triangle'); }
+  function playTypeSound() { playTone(780 + Math.random() * 200, 0.025, 0.014, 'square'); }
+  function playSnapSound() { playTone(380 + Math.random() * 180, 0.045, 0.022, 'sine'); }
   function playCompleteSound() {
     if (!soundEnabled) return;
     setTimeout(() => playTone(523.25, 0.12, 0.04, 'sine'), 0);
@@ -111,26 +126,44 @@
   function collectLayers() {
     const seen = new Set();
     const list = [];
+    const scrollY = window.scrollY || 0;
+
     LAYER_QUERY.forEach(item => {
-      document.querySelectorAll(item.sel).forEach((el, idx) => {
-        if (!seen.has(el)) {
-          seen.add(el);
-          // Only animate typing on leaf-ish elements or headings with simple structure
-          const hasComplexChildren = el.querySelectorAll('div, svg, img').length > 0;
-          const mode = (item.type === 'text' && !hasComplexChildren) ? 'text' : 'box';
-          list.push({
-            el,
-            label: idx > 0 ? `${item.label}_${idx + 1}` : item.label,
-            mode
-          });
-        }
+      let els = [];
+      try {
+        els = document.querySelectorAll(item.sel);
+      } catch (_) {
+        return;
+      }
+      els.forEach((el, idx) => {
+        if (seen.has(el)) return;
+        if (el.closest('#agent-replay-overlay') || el.closest('#agent-replay-dock') || el.closest('#agent-replay-mini')) return;
+        if (el.closest('.fixed')) return;
+
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 6 || rect.height < 6) return;
+        if (rect.width > window.innerWidth * 0.98 && rect.height > window.innerHeight * 0.96) return;
+
+        seen.add(el);
+        const hasComplexChildren = el.querySelectorAll('div, svg, img').length > 0;
+        const mode = (item.type === 'text' && !hasComplexChildren) ? 'text' : 'box';
+        list.push({
+          el,
+          absTop: rect.top + scrollY,
+          absLeft: rect.left + (window.scrollX || 0),
+          label: idx > 0 ? `${item.label}_${idx + 1}` : item.label,
+          mode
+        });
       });
     });
+
     // Sort top-to-bottom by document offsetTop so Touring scrolls naturally downward
     list.sort((a, b) => {
-      const ay = a.el.getBoundingClientRect().top + window.scrollY;
-      const by = b.el.getBoundingClientRect().top + window.scrollY;
-      return ay - by;
+      if (Math.abs(a.absTop - b.absTop) > 10) return a.absTop - b.absTop;
+      return a.absLeft - b.absLeft;
     });
     return list;
   }
@@ -164,9 +197,9 @@
     overlay.appendChild(guideV);
     overlay.appendChild(bbox);
 
-    // 18 Multiplayer Agent Cursors
+    // Pool of 18 Multiplayer Agent Cursors (dynamically 14–18 active)
     const cursors = [];
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < MAX_AGENTS; i++) {
       const color = AGENT_COLORS[i % AGENT_COLORS.length];
       const cur = document.createElement('div');
       cur.className = 'agent-cursor';
@@ -193,7 +226,7 @@
         <span class="w-4 h-4 rounded-full bg-amber-500 border border-[#0d0f17]"></span>
         <span class="w-4 h-4 rounded-full bg-emerald-500 border border-[#0d0f17]"></span>
       </div>
-      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">18 agents</span>
+      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">16 agents</span>
       <button id="replay-tour-btn" type="button" title="Tự động cuộn theo tiến trình thiết kế" class="px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors">Touring</button>
       <button id="replay-speed-btn" type="button" title="Tốc độ 1x / 2x / 3x" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-200 border border-[#2d364d] transition-colors">1x</button>
       <button id="replay-sound-btn" type="button" title="Bật / Tắt âm thanh thiết kế" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-400 border border-[#2d364d] transition-colors">🔇</button>
@@ -221,9 +254,9 @@
     function clearTimers() {
       replayTimers.forEach(t => clearTimeout(t));
       replayTimers = [];
-      if (cursorLoopId) {
-        clearInterval(cursorLoopId);
-        cursorLoopId = null;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
       }
     }
 
@@ -239,6 +272,7 @@
       isReplaying = false;
       clearTimers();
       restoreAllSavedText();
+      document.documentElement.style.scrollBehavior = '';
 
       document.querySelectorAll('.swarm-blank-layer, .swarm-wireframe-layer').forEach(el => {
         el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
@@ -257,14 +291,18 @@
 
       if (completed) {
         playCompleteSound();
-        statusText.textContent = `18 agents • ${totalCount}/${totalCount} layers`;
+        statusText.textContent = `${activeAgentsCount} agents • ${totalCount}/${totalCount} layers`;
       } else {
-        statusText.textContent = '18 agents • Live';
+        statusText.textContent = `${activeAgentsCount} agents • Live`;
       }
     }
 
     function moveCursors(activeRect) {
       cursors.forEach((cur, idx) => {
+        if (idx >= activeAgentsCount) {
+          cur.style.opacity = '0';
+          return;
+        }
         cur.style.opacity = '1';
         if (activeRect && idx < 6) {
           const rx = activeRect.left + Math.random() * Math.max(50, activeRect.width);
@@ -278,7 +316,7 @@
       });
     }
 
-    function typeElementText(el, speed) {
+    function typeElementText(el) {
       if (!savedHTMLMap.has(el)) {
         savedHTMLMap.set(el, el.innerHTML);
       }
@@ -303,10 +341,25 @@
         }
         el.textContent = fullText.slice(0, pos);
         playTypeSound();
-        const t = setTimeout(typeTick, Math.max(18, Math.round(36 / speed)));
+        const t = setTimeout(typeTick, Math.max(14, Math.round(44 / speedMultiplier)));
         replayTimers.push(t);
       };
       typeTick();
+    }
+
+    function computeDynamicAgents(layers, currentIdx) {
+      const vh = window.innerHeight;
+      let nearby = 0;
+      const start = Math.max(0, currentIdx - 6);
+      const end = Math.min(layers.length, currentIdx + 24);
+      for (let i = start; i < end; i++) {
+        const r = layers[i].el.getBoundingClientRect();
+        if (r.bottom >= -40 && r.top <= vh + 120) nearby++;
+      }
+      // Fluctuate naturally between 14 and 18 depending on section density
+      const densityFactor = Math.min(4, Math.floor(nearby / 5));
+      const jitter = (currentIdx % 3 === 0) ? 1 : 0;
+      return Math.max(MIN_AGENTS, Math.min(MAX_AGENTS, MIN_AGENTS + densityFactor + (densityFactor < 4 ? jitter : 0)));
     }
 
     function startReplay() {
@@ -314,11 +367,15 @@
       isReplaying = true;
       clearTimers();
 
-      // Scroll to top immediately to start blank-canvas rebuild from Header
+      // Disable CSS scroll-smooth so per-frame Touring scroll scales identically at 1x, 2x, and 3x
+      document.documentElement.style.scrollBehavior = 'auto';
       window.scrollTo({ top: 0, behavior: 'instant' });
+      scrollFloatY = 0;
+      targetScrollY = 0;
 
       const layers = collectLayers();
       const total = layers.length;
+      activeAgentsCount = 15;
 
       // Step 1: BLANK CANVAS — hide all layers completely!
       layers.forEach(item => {
@@ -330,48 +387,80 @@
       actionBtn.textContent = 'Go Live';
       actionBtn.classList.remove('bg-brand-600', 'hover:bg-brand-500');
       actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-      statusText.textContent = `18 agents • 0/${total}`;
+      statusText.textContent = `${activeAgentsCount} agents • 0/${total}`;
 
       let activeRect = null;
+      let nextIdx = 0;
+      let wireIdx = 0;
+      let finishing = false;
+      let finishTimer = 0;
+      lastTs = 0;
+      cursorAccum = 0;
+      stepAccum = 0;
+
       moveCursors(null);
 
-      // Continuous multi-agent cursor swarm
-      cursorLoopId = setInterval(() => {
-        if (isReplaying) moveCursors(activeRect);
-      }, Math.max(140, Math.round(360 / speedMultiplier)));
+      // Slightly calmer 1x pacing (~15% slower per step) while scaling proportionally at 2x & 3x
+      function getStepIntervalSec(item) {
+        return item.mode === 'text' ? 0.145 : 0.105;
+      }
 
-      let currentDelay = 120;
+      function tick(ts) {
+        if (!isReplaying) return;
+        if (!lastTs) lastTs = ts;
+        const rawDt = Math.min(0.05, Math.max(0.001, (ts - lastTs) / 1000));
+        lastTs = ts;
 
-      layers.forEach((item, idx) => {
-        const baseInterval = item.mode === 'text' ? 210 : 145;
-        const stepDelay = Math.max(45, Math.round(baseInterval / speedMultiplier));
+        const dt = rawDt * speedMultiplier;
+        cursorAccum += dt;
+        stepAccum += dt;
 
-        // Phase A: Draw wireframe sketch first
-        const wireTimer = setTimeout(() => {
-          if (!isReplaying) return;
-          item.el.classList.remove('swarm-blank-layer');
-          item.el.classList.add('swarm-wireframe-layer');
-          playWireframeSound();
-        }, Math.max(0, currentDelay - Math.round(90 / speedMultiplier)));
-        replayTimers.push(wireTimer);
+        // Move cursors smoothly, scaled by speedMultiplier
+        if (cursorAccum >= 0.40) {
+          cursorAccum = 0;
+          moveCursors(activeRect);
+        }
 
-        // Phase B: Build, align bounding box, type text & auto-scroll if Touring is ON
-        const buildTimer = setTimeout(() => {
-          if (!isReplaying) return;
+        // Smooth proportional Touring scroll (never stalls at 2x / 3x)
+        if (touringEnabled) {
+          const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+          const clampedTarget = Math.min(maxScroll, targetScrollY);
+          if (Math.abs(clampedTarget - scrollFloatY) > 0.5) {
+            scrollFloatY += (clampedTarget - scrollFloatY) * Math.min(1, 5.5 * dt);
+            window.scrollTo({ top: scrollFloatY, behavior: 'instant' });
+          }
+        }
 
-          // Touring Auto-Scroll: keep active layer comfortably in viewport
+        // Phase A: Sketch wireframe slightly ahead of build
+        while (wireIdx < total && wireIdx <= nextIdx + 2) {
+          const wItem = layers[wireIdx];
+          if (wItem.el.classList.contains('swarm-blank-layer')) {
+            wItem.el.classList.remove('swarm-blank-layer');
+            wItem.el.classList.add('swarm-wireframe-layer');
+            playWireframeSound();
+          }
+          wireIdx++;
+        }
+
+        // Phase B: Build next layer(s) on schedule
+        while (nextIdx < total) {
+          const item = layers[nextIdx];
+          const needed = getStepIntervalSec(item);
+          if (stepAccum < needed) break;
+          stepAccum -= needed;
+
           if (touringEnabled) {
             const r = item.el.getBoundingClientRect();
-            if (r.top > window.innerHeight * 0.68 || r.bottom < 80) {
-              const targetY = Math.max(0, window.scrollY + r.top - window.innerHeight * 0.32);
-              window.scrollTo({ top: targetY, behavior: 'smooth' });
+            if (r.top > window.innerHeight * 0.62 || r.bottom < 80) {
+              targetScrollY = Math.max(0, scrollFloatY + r.top - window.innerHeight * 0.34);
             }
           }
 
           const rect = item.el.getBoundingClientRect();
           activeRect = rect;
+          activeAgentsCount = computeDynamicAgents(layers, nextIdx);
 
-          statusText.textContent = `18 agents • ${idx + 1}/${total}`;
+          statusText.textContent = `${activeAgentsCount} agents • ${nextIdx + 1}/${total}`;
 
           if (rect.width > 0 && rect.height > 0) {
             bbox.style.opacity = '1';
@@ -388,26 +477,35 @@
             guideV.style.left = `${rect.left}px`;
           }
 
-          item.el.classList.remove('swarm-wireframe-layer');
+          item.el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
           item.el.classList.add('swarm-built-layer');
 
           if (item.mode === 'text') {
-            typeElementText(item.el, speedMultiplier);
+            typeElementText(item.el);
           } else {
             playSnapSound();
           }
 
-          moveCursors(rect);
+          nextIdx++;
+        }
 
-          if (idx === total - 1) {
-            const doneTimer = setTimeout(() => stopReplay(true, total), Math.round(450 / speedMultiplier));
-            replayTimers.push(doneTimer);
+        if (nextIdx >= total) {
+          // Keep tick running briefly so Touring scroll finishes smoothly to the bottom at 1x/2x/3x
+          if (!finishing) {
+            finishing = true;
+            finishTimer = 0;
           }
-        }, currentDelay);
+          finishTimer += dt;
+          if (finishTimer >= 0.55) {
+            stopReplay(true, total);
+            return;
+          }
+        }
 
-        replayTimers.push(buildTimer);
-        currentDelay += stepDelay;
-      });
+        rafId = requestAnimationFrame(tick);
+      }
+
+      rafId = requestAnimationFrame(tick);
     }
 
     // Button Controls
@@ -425,15 +523,15 @@
       tourBtn.className = touringEnabled
         ? 'px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors'
         : 'px-2.5 py-0.5 rounded-full bg-[#1a1f2e] text-gray-500 border border-[#2d364d] hover:text-gray-300 transition-colors';
+      if (touringEnabled) {
+        scrollFloatY = window.scrollY;
+        targetScrollY = window.scrollY;
+      }
     });
 
     speedBtn.addEventListener('click', () => {
       speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 3 : 1;
       speedBtn.textContent = `${speedMultiplier}x`;
-      if (isReplaying) {
-        // Restart cleanly at new speed
-        startReplay();
-      }
     });
 
     soundBtn.addEventListener('click', () => {

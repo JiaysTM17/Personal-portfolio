@@ -1,12 +1,11 @@
-// Swarm Rebuild — Silky Paper-Airplane Multi-Agent Build Replay
-// Features:
-// - Organic paper-airplane flocking cursors (velocity-aligned rotation, never rigid, never frozen)
-// - Continuous silky-smooth Tour auto-scroll (no jerky section jumps)
-// - Calm, readable 1x pacing with live 1x / 2x / 3x speed multiplier
-// - Real wireframe drawing, I-beam text typing & Web Audio API SFX
+// Swarm Rebuild — Deterministic, Zero-Clutter Multi-Agent Build Replay
+// - Every visible cursor owns 1 active task (idle cursors are hidden — zero dancing!)
+// - Strict state machine: travel (fast) -> arrive -> drag wireframe -> type/reveal
+// - Uninterrupted, silky-smooth constant-velocity Tour scroll after Hero completes
+// - Live 1x / 2x / 3x speed scaling & Web Audio API SFX
 
 (function () {
-  const AGENT_COUNT = 16;
+  const MAX_AGENTS = 10;
   const AGENT_COLORS = [
     '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b',
     '#10b981', '#06b6d4', '#f43f5e', '#6366f1'
@@ -111,7 +110,6 @@
     setTimeout(() => playTone(783.99, 0.25, 0.045, 'sine'), 200);
   }
 
-  // Sleek pointer / paper-airplane arrow pointing UP-LEFT (-135deg default, rotated by velocity)
   function createPointerSVG(color) {
     return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M8 1.2L13.8 14.2L8 11.2L2.2 14.2L8 1.2Z" fill="${color}" stroke="#ffffff" stroke-width="1.1" stroke-linejoin="round"/>
@@ -133,9 +131,7 @@
             el,
             mode,
             docTop,
-            state: 'blank', // blank -> dragging -> built
-            progress: 0,
-            dragBox: null
+            claimed: false
           });
         }
       });
@@ -160,27 +156,24 @@
     overlay.appendChild(guideH);
     overlay.appendChild(guideV);
 
-    // 16 Paper-Airplane Flocking Agents
     const agents = [];
-    for (let i = 0; i < AGENT_COUNT; i++) {
+    for (let i = 0; i < MAX_AGENTS; i++) {
       const color = AGENT_COLORS[i % AGENT_COLORS.length];
       const el = document.createElement('div');
       el.className = 'agent-cursor';
       el.style.opacity = '0';
-      el.style.transition = 'opacity 0.25s ease'; // NO transform transition — physics loop drives 60fps!
+      el.style.transition = 'opacity 0.2s ease';
       el.innerHTML = createPointerSVG(color);
       overlay.appendChild(el);
 
       agents.push({
         el,
-        x: window.innerWidth * 0.5 + (Math.random() - 0.5) * 140,
-        y: window.innerHeight * 0.45 + (Math.random() - 0.5) * 140,
+        x: window.innerWidth * 0.5,
+        y: window.innerHeight * 0.45,
         vx: 0,
         vy: 0,
         angle: 0,
-        phase: (i / AGENT_COUNT) * Math.PI * 2,
-        freqX: 1.1 + (i % 3) * 0.35,
-        freqY: 0.9 + (i % 4) * 0.28,
+        phase: (i / MAX_AGENTS) * Math.PI * 2,
         task: null
       });
     }
@@ -197,7 +190,7 @@
         <span class="w-4 h-4 rounded-full bg-amber-500 border border-[#0d0f17]"></span>
         <span class="w-4 h-4 rounded-full bg-emerald-500 border border-[#0d0f17]"></span>
       </div>
-      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">16 agents</span>
+      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">${MAX_AGENTS} agents</span>
       <button id="replay-tour-btn" type="button" title="Tự động cuộn mượt mà theo tiến trình thiết kế" class="px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors">Tour</button>
       <button id="replay-speed-btn" type="button" title="Tốc độ 1x / 2x / 3x" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-200 border border-[#2d364d] transition-colors">1x</button>
       <button id="replay-sound-btn" type="button" title="Bật / Tắt âm thanh thiết kế" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-400 border border-[#2d364d] transition-colors">🔇</button>
@@ -262,33 +255,32 @@
 
       if (completed) {
         playCompleteChime();
-        statusText.textContent = `Rebuilt by ${AGENT_COUNT} agents in ${durationSec.toFixed(1)}s`;
+        statusText.textContent = `Rebuilt by ${MAX_AGENTS} agents in ${durationSec.toFixed(1)}s`;
       } else {
-        statusText.textContent = `${AGENT_COUNT} agents • Live`;
+        statusText.textContent = `${MAX_AGENTS} agents • Live`;
       }
     }
 
-    // Physics helper: steer an agent smoothly toward (tx, ty) and orient like a paper airplane!
-    function steerAgent(agent, tx, ty, dtSec, stiffness = 9.0) {
+    // Fast-travel / smooth-drag steering with paper-airplane nose alignment
+    function steerAgent(agent, tx, ty, dtSec, stiffness = 22.0) {
       const dx = tx - agent.x;
       const dy = ty - agent.y;
-      agent.vx += (dx * stiffness - agent.vx * 5.2) * dtSec;
-      agent.vy += (dy * stiffness - agent.vy * 5.2) * dtSec;
+      agent.vx += (dx * stiffness - agent.vx * 7.8) * dtSec;
+      agent.vy += (dy * stiffness - agent.vy * 7.8) * dtSec;
       agent.x += agent.vx * dtSec;
       agent.y += agent.vy * dtSec;
 
       const speed = Math.hypot(agent.vx, agent.vy);
-      if (speed > 12) {
-        // Point nose in direction of velocity (+90deg because SVG nose points UP)
+      if (speed > 18) {
         const targetAngle = Math.atan2(agent.vy, agent.vx) * (180 / Math.PI) + 90;
-        // Shortest angular interpolation
         let diff = ((targetAngle - agent.angle + 540) % 360) - 180;
-        agent.angle += diff * Math.min(1, dtSec * 12);
+        agent.angle += diff * Math.min(1, dtSec * 16);
       }
 
       const cx = Math.min(window.innerWidth - 20, Math.max(4, agent.x));
       const cy = Math.min(window.innerHeight - 20, Math.max(4, agent.y));
       agent.el.style.transform = `translate3d(${cx}px, ${cy}px, 0) rotate(${agent.angle.toFixed(1)}deg)`;
+      return Math.hypot(dx, dy);
     }
 
     function startReplay() {
@@ -302,7 +294,6 @@
       const layers = collectAllLayers();
       const totalLayers = layers.length;
       let builtCount = 0;
-      let nextLayerIdx = 0;
 
       // Blank out entire page cleanly
       layers.forEach(item => {
@@ -315,12 +306,11 @@
       actionBtn.classList.remove('bg-brand-600', 'hover:bg-brand-500');
       actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
 
-      // Reset agents to center
       const cx0 = window.innerWidth * 0.5;
       const cy0 = window.innerHeight * 0.45;
       agents.forEach(a => {
-        a.x = cx0 + Math.cos(a.phase) * 90;
-        a.y = cy0 + Math.sin(a.phase) * 70;
+        a.x = cx0 + Math.cos(a.phase) * 95;
+        a.y = cy0 + Math.sin(a.phase) * 75;
         a.vx = 0;
         a.vy = 0;
         a.task = null;
@@ -330,9 +320,7 @@
       let simTime = 0;
       let lastFrame = performance.now();
       let scrollFloatY = 0;
-      const introDuration = 1.45; // Organic paper-airplane flocking intro (~1.45s at 1x)
-      let outroStart = null;
-      const outroDuration = 1.1;
+      const introDuration = 1.15; // Brief paper-airplane flock intro (~1.15s)
 
       function tick(now) {
         if (!isReplaying || runId !== replayRunId) return;
@@ -342,188 +330,168 @@
         const dt = rawDt * speedMultiplier;
         simTime += dt;
 
-        // PHASE 0: Organic Paper-Airplane Flocking ("Scanning page...")
+        // PHASE 0: Brief Organic Paper-Airplane Flock ("Scanning page...")
         if (simTime < introDuration) {
           statusText.textContent = 'Scanning page...';
           const cx = window.innerWidth * 0.5;
           const cy = window.innerHeight * 0.45;
           agents.forEach((a, i) => {
-            // Smooth Lissajous / swirling figure-8 flock — NOT a stiff circle!
-            const t = simTime * 2.4 + a.phase;
-            const rx = 135 + Math.sin(t * 0.7 + i) * 45;
-            const ry = 85 + Math.cos(t * 1.1) * 35;
-            const tx = cx + Math.cos(t * a.freqX * 0.65) * rx;
-            const ty = cy + Math.sin(t * a.freqY * 0.85) * ry;
-            steerAgent(a, tx, ty, dt, 10);
+            const t = simTime * 2.8 + a.phase;
+            const rx = 130 + Math.sin(t * 0.8 + i) * 35;
+            const ry = 80 + Math.cos(t * 1.1) * 30;
+            steerAgent(a, cx + Math.cos(t * 0.75) * rx, cy + Math.sin(t * 0.95) * ry, dt, 14);
           });
           rafId = requestAnimationFrame(tick);
           return;
         }
 
-        // PHASE 1: Smooth Continuous Tour Scroll + Active Multi-Agent Construction
+        // PHASE 1: Uninterrupted Smooth Tour Scroll (starts once Hero intro finishes)
         const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        const heroBuiltThreshold = 14; // Let Hero settle briefly at y=0, then glide steadily down!
+        if (touringEnabled && builtCount >= heroBuiltThreshold && scrollFloatY < maxScroll) {
+          // Steady, silky-smooth constant velocity (~145px/sec at 1x) — NEVER stutters or stops!
+          scrollFloatY = Math.min(maxScroll, scrollFloatY + 145 * dt);
+          window.scrollTo(0, scrollFloatY);
+        }
 
-        if (touringEnabled && nextLayerIdx < totalLayers && outroStart === null) {
-          // Look ahead at the next unbuilt layer to pace scroll naturally
-          const nextLayer = layers[nextLayerIdx];
-          const nextRect = nextLayer.el.getBoundingClientRect();
-          // Smoothly crawl down only when current top items are handled, keeping active build comfortably in view
-          if (nextRect.top > window.innerHeight * 0.55 && scrollFloatY < maxScroll) {
-            // Gentle cinematic scroll speed (~135px/s at 1x)
-            scrollFloatY = Math.min(maxScroll, scrollFloatY + 135 * dt);
-            window.scrollTo(0, scrollFloatY);
-          } else if (nextRect.top < 60 && scrollFloatY > 0) {
-            scrollFloatY = Math.max(0, scrollFloatY - 90 * dt);
-            window.scrollTo(0, scrollFloatY);
+        // Assign ONLY idle agents to unclaimed layers currently in (or near) viewport!
+        // Idle agents with NO task stay hidden (opacity: 0) — ZERO extra dancing cursors!
+        const idleAgents = agents.filter(a => a.task === null);
+        if (idleAgents.length > 0) {
+          for (let i = 0; i < layers.length && idleAgents.length > 0; i++) {
+            const item = layers[i];
+            if (item.claimed) continue;
+
+            const rect = item.el.getBoundingClientRect();
+            // Only pick up elements visible in viewport (or if Tour is OFF, build visible ones)
+            if (rect.top > window.innerHeight * 0.92) break;
+
+            item.claimed = true;
+            const agent = idleAgents.shift();
+            agent.el.style.opacity = '1';
+
+            agent.task = {
+              phase: 'travel', // travel -> work
+              item,
+              dragBox: null,
+              fullText: '',
+              lastTypedLen: 0,
+              elapsed: 0,
+              duration: 0.34
+            };
           }
         }
 
-        // Assign idle agents to next available layers (up to 6 active builders at once for clean, readable pace)
-        let activeBuilders = agents.filter(a => a.task !== null).length;
-        while (activeBuilders < 6 && nextLayerIdx < totalLayers) {
-          const item = layers[nextLayerIdx];
-          const rect = item.el.getBoundingClientRect();
-          // If Tour is ON and item is way below viewport, wait for smooth scroll to bring it into view!
-          if (touringEnabled && rect.top > window.innerHeight * 0.88 && scrollFloatY < maxScroll - 5) {
-            break;
+        // Process active agents & hide any truly idle agents
+        agents.forEach(a => {
+          if (!a.task) {
+            // Hide idle agents so ZERO idle cursors clutter or dance on screen!
+            a.el.style.opacity = '0';
+            return;
           }
 
-          const idleAgent = agents.find(a => a.task === null);
-          if (!idleAgent) break;
+          a.el.style.opacity = '1';
+          const t = a.task;
+          const rect = t.item.el.getBoundingClientRect();
 
-          nextLayerIdx++;
-          activeBuilders++;
+          // STATE 1: Fast Travel to exact top-left corner BEFORE starting any drag/draw!
+          if (t.phase === 'travel') {
+            const dist = steerAgent(a, rect.left, rect.top, dt, 26);
+            if (dist < 14) {
+              // Arrived! Snap to work state
+              t.phase = 'work';
+              t.elapsed = 0;
 
-          // Prepare text if typing mode
-          let fullText = '';
-          if (item.mode === 'text') {
-            if (!savedHTMLMap.has(item.el)) {
-              savedHTMLMap.set(item.el, item.el.innerHTML);
-            }
-            fullText = item.el.textContent.trim();
-            item.el.textContent = '';
-            item.el.classList.remove('swarm-blank-layer');
-            item.el.classList.add('swarm-built-layer', 'swarm-typing-caret');
-          }
-
-          // Create wireframe drag box
-          const dragBox = document.createElement('div');
-          dragBox.className = 'agent-drag-box';
-          dragBox.style.left = `${rect.left}px`;
-          dragBox.style.top = `${rect.top}px`;
-          dragBox.style.width = '8px';
-          dragBox.style.height = '8px';
-          dragBox.innerHTML = `
-            <span class="agent-drag-handle tl"></span>
-            <span class="agent-drag-handle tr"></span>
-            <span class="agent-drag-handle bl"></span>
-            <span class="agent-drag-handle br"></span>
-            <span class="agent-drag-dim">${Math.round(rect.width)} × ${Math.round(rect.height)}</span>
-            <span class="agent-drag-crosshair">+</span>
-          `;
-          overlay.appendChild(dragBox);
-
-          guideH.style.opacity = '1';
-          guideH.style.top = `${rect.top}px`;
-          guideV.style.opacity = '1';
-          guideV.style.left = `${rect.left}px`;
-
-          playDragSound();
-
-          idleAgent.task = {
-            item,
-            dragBox,
-            fullText,
-            lastTypedLen: 0,
-            elapsed: 0,
-            duration: item.mode === 'text' ? Math.max(0.65, Math.min(1.15, fullText.length * 0.032)) : 0.62
-          };
-        }
-
-        // Update all agents (both builders AND idle paper-airplanes!)
-        agents.forEach((a, idx) => {
-          if (a.task) {
-            const t = a.task;
-            t.elapsed += dt;
-            const p = Math.min(1, t.elapsed / t.duration);
-            const rect = t.item.el.getBoundingClientRect();
-
-            // Keep wireframe aligned with live scroll position
-            const curW = Math.max(8, rect.width * Math.min(1, p * 1.45));
-            const curH = Math.max(8, rect.height * Math.min(1, p * 1.45));
-            t.dragBox.style.left = `${rect.left}px`;
-            t.dragBox.style.top = `${rect.top}px`;
-            t.dragBox.style.width = `${curW}px`;
-            t.dragBox.style.height = `${curH}px`;
-
-            if (t.item.mode === 'text') {
-              const charCount = Math.floor(t.fullText.length * p);
-              if (charCount > t.lastTypedLen) {
-                t.lastTypedLen = charCount;
-                t.item.el.textContent = t.fullText.slice(0, charCount);
-                playTypeSound();
-              }
-              steerAgent(a, rect.left + rect.width * p + 6, rect.top + rect.height * 0.5, dt, 14);
-            } else {
-              // Reveal element smoothly at 65% of drag
-              if (p > 0.65 && t.item.el.classList.contains('swarm-blank-layer')) {
-                t.item.el.classList.remove('swarm-blank-layer');
-                t.item.el.classList.add('swarm-built-layer');
-                playSnapSound();
-              }
-              steerAgent(a, rect.left + curW, rect.top + curH, dt, 13);
-            }
-
-            if (p >= 1) {
-              // Finalize element
               if (t.item.mode === 'text') {
-                t.item.el.classList.remove('swarm-typing-caret');
-                if (savedHTMLMap.has(t.item.el)) {
-                  t.item.el.innerHTML = savedHTMLMap.get(t.item.el);
-                  savedHTMLMap.delete(t.item.el);
+                if (!savedHTMLMap.has(t.item.el)) {
+                  savedHTMLMap.set(t.item.el, t.item.el.innerHTML);
                 }
-              } else {
+                t.fullText = t.item.el.textContent.trim();
+                t.item.el.textContent = '';
                 t.item.el.classList.remove('swarm-blank-layer');
-                t.item.el.classList.add('swarm-built-layer');
+                t.item.el.classList.add('swarm-built-layer', 'swarm-typing-caret');
+                t.duration = Math.max(0.32, Math.min(0.68, t.fullText.length * 0.022));
+              } else {
+                t.duration = 0.32;
               }
-              t.dragBox.remove();
-              a.task = null;
-              builtCount++;
-              statusText.textContent = `${AGENT_COUNT} agents • ${builtCount}/${totalLayers} layers`;
+
+              const dragBox = document.createElement('div');
+              dragBox.className = 'agent-drag-box';
+              dragBox.style.left = `${rect.left}px`;
+              dragBox.style.top = `${rect.top}px`;
+              dragBox.style.width = '8px';
+              dragBox.style.height = '8px';
+              dragBox.innerHTML = `
+                <span class="agent-drag-handle tl"></span>
+                <span class="agent-drag-handle tr"></span>
+                <span class="agent-drag-handle bl"></span>
+                <span class="agent-drag-handle br"></span>
+                <span class="agent-drag-dim">${Math.round(rect.width)} × ${Math.round(rect.height)}</span>
+                <span class="agent-drag-crosshair">+</span>
+              `;
+              overlay.appendChild(dragBox);
+              t.dragBox = dragBox;
+
+              guideH.style.opacity = '1';
+              guideH.style.top = `${rect.top}px`;
+              guideV.style.opacity = '1';
+              guideV.style.left = `${rect.left}px`;
+              playDragSound();
             }
+            return;
+          }
+
+          // STATE 2: Deliberate Work (drag wireframe + type text / reveal element)
+          t.elapsed += dt;
+          const p = Math.min(1, t.elapsed / t.duration);
+
+          const curW = Math.max(8, rect.width * Math.min(1, p * 1.25));
+          const curH = Math.max(8, rect.height * Math.min(1, p * 1.25));
+          t.dragBox.style.left = `${rect.left}px`;
+          t.dragBox.style.top = `${rect.top}px`;
+          t.dragBox.style.width = `${curW}px`;
+          t.dragBox.style.height = `${curH}px`;
+
+          if (t.item.mode === 'text') {
+            const charCount = Math.floor(t.fullText.length * p);
+            if (charCount > t.lastTypedLen) {
+              t.lastTypedLen = charCount;
+              t.item.el.textContent = t.fullText.slice(0, charCount);
+              playTypeSound();
+            }
+            steerAgent(a, rect.left + rect.width * p + 6, rect.top + rect.height * 0.5, dt, 22);
           } else {
-            // Idle agents NEVER freeze! They bank smoothly in gentle paper-airplane loops around the active area
-            const cx = window.innerWidth * 0.5;
-            const cy = window.innerHeight * 0.48;
-            const t = simTime * 1.45 + a.phase;
-            const tx = cx + Math.cos(t * a.freqX * 0.55 + idx) * (window.innerWidth * 0.34);
-            const ty = cy + Math.sin(t * a.freqY * 0.7 + idx) * (window.innerHeight * 0.28);
-            steerAgent(a, tx, ty, dt, 4.5);
+            if (p > 0.6 && t.item.el.classList.contains('swarm-blank-layer')) {
+              t.item.el.classList.remove('swarm-blank-layer');
+              t.item.el.classList.add('swarm-built-layer');
+              playSnapSound();
+            }
+            steerAgent(a, rect.left + curW, rect.top + curH, dt, 20);
+          }
+
+          if (p >= 1) {
+            if (t.item.mode === 'text') {
+              t.item.el.classList.remove('swarm-typing-caret');
+              if (savedHTMLMap.has(t.item.el)) {
+                t.item.el.innerHTML = savedHTMLMap.get(t.item.el);
+                savedHTMLMap.delete(t.item.el);
+              }
+            } else {
+              t.item.el.classList.remove('swarm-blank-layer');
+              t.item.el.classList.add('swarm-built-layer');
+            }
+            t.dragBox.remove();
+            a.task = null;
+            builtCount++;
+            statusText.textContent = `${MAX_AGENTS} agents • ${builtCount}/${totalLayers} layers`;
           }
         });
 
-        // Check completion -> Victory paper-airplane flock outro!
-        if (builtCount >= totalLayers && outroStart === null) {
-          outroStart = simTime;
-          guideH.style.opacity = '0';
-          guideV.style.opacity = '0';
-        }
-
-        if (outroStart !== null) {
-          const outroElapsed = simTime - outroStart;
-          const cx = window.innerWidth * 0.5;
-          const cy = window.innerHeight * 0.5;
-          agents.forEach((a, i) => {
-            const t = simTime * 2.8 + a.phase;
-            const tx = cx + Math.cos(t + i * 0.2) * 110;
-            const ty = cy + Math.sin(t * 1.2) * 80;
-            steerAgent(a, tx, ty, dt, 8);
-          });
-          if (outroElapsed >= outroDuration) {
-            const elapsedSec = (now - startTime) / 1000;
-            stopReplay(true, totalLayers, elapsedSec);
-            return;
-          }
+        // Finish cleanly when all layers are built
+        if (builtCount >= totalLayers) {
+          const elapsedSec = (now - startTime) / 1000;
+          stopReplay(true, totalLayers, elapsedSec);
+          return;
         }
 
         rafId = requestAnimationFrame(tick);
@@ -548,7 +516,6 @@
         : 'px-2.5 py-0.5 rounded-full bg-[#1a1f2e] text-gray-500 border border-[#2d364d] hover:text-gray-300 transition-colors';
     });
 
-    // Live 1x -> 2x -> 3x speed (instantaneous, zero reset, zero disappearing cursors!)
     speedBtn.addEventListener('click', () => {
       speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 3 : 1;
       speedBtn.textContent = `${speedMultiplier}x`;

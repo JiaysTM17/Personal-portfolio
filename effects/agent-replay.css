@@ -1,4 +1,4 @@
-/* Swarm Rebuild — Authentic Full-Page Multi-Agent UI/UX Build Replay */
+/* Swarm Rebuild — Authentic Multi-Agent UI/UX Build Replay */
 
 #agent-replay-overlay {
   position: fixed;
@@ -8,15 +8,15 @@
   overflow: hidden;
 }
 
-/* Red/Orange Figma Alignment Guide Lines */
+/* Subtle Figma Alignment Guide Lines */
 .agent-guide-h {
   position: fixed;
   left: 0;
   right: 0;
   height: 1px;
-  background: rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.35);
   pointer-events: none;
-  transition: top 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease;
+  transition: top 0.25s ease, opacity 0.2s ease;
 }
 
 .agent-guide-v {
@@ -24,103 +24,76 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.35);
   pointer-events: none;
-  transition: left 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease;
+  transition: left 0.25s ease, opacity 0.2s ease;
 }
 
-/* Blue Selection Bounding Box */
-.agent-bbox {
+/* Per-Agent Active Wireframe / Selection Box */
+.agent-drag-box {
   position: fixed;
-  border: 1.5px solid #3b82f6;
-  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.75);
+  background: rgba(37, 99, 235, 0.05);
   pointer-events: none;
-  transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 0 18px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.14);
 }
 
-.agent-bbox-handle {
+.agent-drag-handle {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   background: #ffffff;
-  border: 1.5px solid #3b82f6;
+  border: 1px solid #3b82f6;
 }
-.agent-bbox-handle.tl { top: -4px; left: -4px; }
-.agent-bbox-handle.tr { top: -4px; right: -4px; }
-.agent-bbox-handle.bl { bottom: -4px; left: -4px; }
-.agent-bbox-handle.br { bottom: -4px; right: -4px; }
+.agent-drag-handle.tl { top: -3px; left: -3px; }
+.agent-drag-handle.tr { top: -3px; right: -3px; }
+.agent-drag-handle.bl { bottom: -3px; left: -3px; }
+.agent-drag-handle.br { bottom: -3px; right: -3px; }
 
-.agent-bbox-tag {
+.agent-drag-dim {
   position: absolute;
-  top: -19px;
-  left: -1px;
-  background: #2563eb;
-  color: #ffffff;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 3px;
-  white-space: nowrap;
-}
-
-.agent-bbox-dim {
-  position: absolute;
-  bottom: -19px;
+  bottom: -17px;
   left: 50%;
   transform: translateX(-50%);
   background: #2563eb;
   color: #ffffff;
   font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: 9px;
+  padding: 0px 5px;
   border-radius: 3px;
   white-space: nowrap;
 }
 
-/* Wireframe Ghost Box (drawn on blank canvas before element builds) */
-.agent-wireframe-box {
-  position: fixed;
-  border: 1px dashed rgba(59, 130, 246, 0.45);
-  background: rgba(37, 99, 235, 0.03);
-  border-radius: 8px;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
+.agent-drag-crosshair {
+  position: absolute;
+  bottom: -7px;
+  right: -7px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
 }
 
-/* Multiplayer Agent Cursors */
+/* Clean Multiplayer Agent Cursors (No cluttering labels!) */
 .agent-cursor {
   position: fixed;
   top: 0;
   left: 0;
   pointer-events: none;
-  z-index: 86;
+  z-index: 88;
   will-change: transform;
-  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.75));
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.75));
 }
 
-.agent-cursor-label {
-  margin-left: 12px;
-  margin-top: -2px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  font-weight: 600;
-  color: #ffffff;
-  white-space: nowrap;
-}
-
-/* I-Beam Text Typing Cursor */
+/* I-Beam Text Typing Caret */
 .swarm-typing-caret::after {
   content: 'I';
   display: inline-block;
-  color: #60a5fa;
+  color: #93c5fd;
   font-weight: 300;
   margin-left: 2px;
-  animation: swarmBlink 0.5s infinite;
+  animation: swarmBlink 0.45s infinite;
 }
 
 @keyframes swarmBlink {
@@ -128,21 +101,22 @@
   50% { opacity: 0; }
 }
 
-/* Blank Canvas State (Completely cleared before build!) */
+/* Blank Canvas State (Completely empty before build!) */
 .swarm-blank-layer {
   opacity: 0 !important;
-  transform: translateY(6px) scale(0.99);
+  pointer-events: none !important;
+  transition: none !important;
 }
 
-.swarm-wireframe-layer {
-  opacity: 0.08 !important;
-  outline: 1px dashed rgba(59, 130, 246, 0.5) !important;
+.swarm-clip-revealing {
+  opacity: 1 !important;
+  clip-path: inset(0 100% 100% 0);
 }
 
 .swarm-built-layer {
   opacity: 1 !important;
-  transform: none !important;
-  transition: opacity 0.28s ease-out, transform 0.28s ease-out !important;
+  clip-path: inset(0 0 0 0) !important;
+  transition: clip-path 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-out !important;
 }
 
 /* Floating Control Dock at Bottom Center */
@@ -157,10 +131,10 @@
   gap: 8px;
   background: rgba(13, 15, 23, 0.94);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  border: 1px solid rgba(59, 130, 246, 0.38);
   border-radius: 999px;
   padding: 6px 14px;
-  box-shadow: 0 12px 42px rgba(0, 0, 0, 0.75), 0 0 28px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 12px 42px rgba(0, 0, 0, 0.75), 0 0 25px rgba(37, 99, 235, 0.2);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   color: #e2e8f0;

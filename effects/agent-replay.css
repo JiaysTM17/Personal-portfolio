@@ -1,4 +1,4 @@
-/* Multi-Agent Build Replay Effect (Figma / AI Swarm Overlay) */
+/* Multi-Agent UI/UX Swarm Rebuild Overlay */
 
 #agent-replay-overlay {
   position: fixed;
@@ -8,15 +8,14 @@
   overflow: hidden;
 }
 
-/* Red/Orange Figma Alignment Guide Lines */
+/* Figma Alignment Guide Lines */
 .agent-guide-h {
   position: fixed;
   left: 0;
   right: 0;
   height: 1px;
-  background: rgba(249, 115, 22, 0.45);
+  background: rgba(249, 115, 22, 0.35);
   pointer-events: none;
-  transition: top 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
 }
 
 .agent-guide-v {
@@ -24,77 +23,72 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgba(249, 115, 22, 0.45);
+  background: rgba(249, 115, 22, 0.35);
   pointer-events: none;
-  transition: left 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
 }
 
-/* Blue Selection Bounding Box */
-.agent-bbox {
+/* Per-Agent Wireframe Drag Box */
+.agent-drag-box {
   position: fixed;
   border: 1.5px solid #3b82f6;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(59, 130, 246, 0.06);
   pointer-events: none;
-  transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 0 18px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.16);
 }
 
-/* 4 Corner Handles */
-.agent-bbox-handle {
+.agent-drag-handle {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   background: #ffffff;
   border: 1.5px solid #3b82f6;
 }
-.agent-bbox-handle.tl { top: -4px; left: -4px; }
-.agent-bbox-handle.tr { top: -4px; right: -4px; }
-.agent-bbox-handle.bl { bottom: -4px; left: -4px; }
-.agent-bbox-handle.br { bottom: -4px; right: -4px; }
+.agent-drag-handle.tl { top: -3.5px; left: -3.5px; }
+.agent-drag-handle.tr { top: -3.5px; right: -3.5px; }
+.agent-drag-handle.bl { bottom: -3.5px; left: -3.5px; }
+.agent-drag-handle.br { bottom: -3.5px; right: -3.5px; }
 
-/* Tag Pill & Dimension Pill */
-.agent-bbox-tag {
+.agent-drag-crosshair {
   position: absolute;
-  top: -20px;
-  left: -1px;
-  background: #2563eb;
-  color: #ffffff;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(96, 165, 250, 0.85);
   font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 3px;
-  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1;
+  user-select: none;
 }
 
-.agent-bbox-dim {
+.agent-drag-dim {
   position: absolute;
-  bottom: -20px;
+  bottom: -19px;
   left: 50%;
   transform: translateX(-50%);
   background: #2563eb;
   color: #ffffff;
   font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
   border-radius: 3px;
   white-space: nowrap;
 }
 
-/* Multiplayer Agent Cursors */
+/* Multiplayer Agent Cursors (JS-driven 60fps, no transform transition) */
 .agent-cursor {
   position: fixed;
   top: 0;
   left: 0;
   pointer-events: none;
   z-index: 85;
-  will-change: transform;
-  transition: transform 0.55s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+  will-change: transform, opacity;
+  transition: opacity 0.2s ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.65));
 }
 
 .agent-cursor-label {
-  margin-left: 12px;
+  margin-left: 14px;
   margin-top: -2px;
   padding: 1px 6px;
   border-radius: 999px;
@@ -104,19 +98,40 @@
   color: #ffffff;
   white-space: nowrap;
   opacity: 0.92;
+  display: inline-block;
 }
 
-/* Layer Reveal State during Replay */
-.replay-hidden-layer {
-  opacity: 0.14 !important;
-  filter: saturate(0.2) blur(1.5px) !important;
-  transition: opacity 0.35s ease, filter 0.35s ease !important;
+/* I-Beam Typing Caret */
+.swarm-typing-caret {
+  position: fixed;
+  width: 2px;
+  height: 16px;
+  background: #60a5fa;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.9);
+  pointer-events: none;
+  animation: swarm-caret-blink 0.55s steps(2, start) infinite;
 }
 
-.replay-revealed-layer {
+@keyframes swarm-caret-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+
+/* Blank Canvas -> Built Reveal */
+.swarm-blank-layer {
+  opacity: 0 !important;
+  transition: none !important;
+}
+
+.swarm-typing-layer {
   opacity: 1 !important;
-  filter: none !important;
-  transition: opacity 0.35s ease, filter 0.35s ease !important;
+  transition: none !important;
+}
+
+.swarm-built-layer {
+  opacity: 1 !important;
+  clip-path: none !important;
+  transition: opacity 0.22s ease-out !important;
 }
 
 /* Floating Control Dock at Bottom Center */
@@ -128,24 +143,23 @@
   z-index: 95;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(15, 17, 25, 0.92);
+  gap: 8px;
+  background: rgba(12, 14, 21, 0.92);
   backdrop-filter: blur(14px);
   border: 1px solid rgba(59, 130, 246, 0.35);
   border-radius: 999px;
   padding: 6px 14px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65), 0 0 25px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(37, 99, 235, 0.18);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   color: #e2e8f0;
-  transition: all 0.3s ease;
   max-width: 95vw;
 }
 
 @media (max-width: 640px) {
   #agent-replay-dock {
     padding: 5px 10px;
-    gap: 6px;
+    gap: 5px;
     font-size: 10px;
   }
   .dock-hide-mobile {

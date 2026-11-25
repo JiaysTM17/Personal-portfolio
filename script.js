@@ -304,7 +304,62 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 8. Active Nav Link on Scroll
+  // 8. Toast Notification Helper, Click-to-Copy Email & Zen Mode
+  const toastEl = document.getElementById('toast-notification');
+  const toastMsgEl = document.getElementById('toast-message');
+  let toastTimeout;
+
+  function showToast(msg) {
+    if (!toastEl || !toastMsgEl) return;
+    toastMsgEl.textContent = msg;
+    toastEl.classList.remove('translate-y-20', 'opacity-0');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+      toastEl.classList.add('translate-y-20', 'opacity-0');
+    }, 3000);
+  }
+
+  // Click-to-Copy Email
+  const copyEmailBtn = document.getElementById('copy-email-btn');
+  const copyEmailBadge = document.getElementById('copy-email-badge');
+  if (copyEmailBtn) {
+    const handleCopy = () => {
+      navigator.clipboard.writeText('truonggiakiet110806@gmail.com').then(() => {
+        showToast('Đã sao chép email: truonggiakiet110806@gmail.com');
+        if (copyEmailBadge) {
+          copyEmailBadge.innerHTML = '<span>Đã copy!</span>';
+          copyEmailBadge.classList.add('text-emerald-400', 'border-emerald-600');
+          setTimeout(() => {
+            copyEmailBadge.innerHTML = '<i data-lucide="copy" class="w-3.5 h-3.5"></i><span>Copy</span>';
+            copyEmailBadge.classList.remove('text-emerald-400', 'border-emerald-600');
+            if (window.lucide) window.lucide.createIcons();
+          }, 2500);
+        }
+      });
+    };
+    copyEmailBtn.addEventListener('click', handleCopy);
+    copyEmailBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleCopy();
+      }
+    });
+  }
+
+  // Zen Mode Toggle
+  const zenBtn = document.getElementById('zen-mode-btn');
+  if (zenBtn) {
+    let isZen = false;
+    zenBtn.addEventListener('click', () => {
+      isZen = !isZen;
+      document.body.classList.toggle('bg-black', isZen);
+      zenBtn.classList.toggle('text-brand-400', isZen);
+      zenBtn.classList.toggle('border-brand-500', isZen);
+      showToast(isZen ? 'Đã bật Zen Focus Mode' : 'Đã tắt Zen Focus Mode');
+    });
+  }
+
+  // 9. Active Nav Link on Scroll
   const sections = document.querySelectorAll('section[id]');
   const navLinks = document.querySelectorAll('.nav-link');
 

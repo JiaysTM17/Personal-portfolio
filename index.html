@@ -79,7 +79,10 @@
       </nav>
 
       <!-- Right CTA & Status -->
-      <div class="hidden md:flex items-center gap-4">
+      <div class="hidden md:flex items-center gap-3">
+        <button id="zen-mode-btn" type="button" title="Chuyển chế độ tập trung (Zen Mode)" class="p-2 rounded-lg bg-[#12151e] border border-[#232938] hover:border-brand-500 text-gray-400 hover:text-brand-400 transition-colors">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+        </button>
         <a href="#contact" class="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-800/40 px-3 py-1.5 rounded-full transition-colors">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
           <span>Sẵn sàng nhận Internship</span>
@@ -242,83 +245,127 @@
 
     </section>
 
-    <!-- BENTO SNAPSHOT & LIVE STUDIO CLOCK (Inspired by modern developer portfolios) -->
-    <section class="py-12 border-b border-[#1f242e]/40 bg-[#0b0c10] relative">
+    <!-- BENTO ENGINEERING HUB (Inspired by haast.my.id & hoangtu.dev) -->
+    <section class="py-16 md:py-20 border-b border-[#1f242e]/40 bg-[#0b0c10] relative">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Centered Editorial Headline matching haast.my.id -->
+        <div class="text-center max-w-2xl mx-auto mb-12 space-y-3">
+          <span class="text-xs font-mono uppercase tracking-widest text-brand-400">ENGINEERING OVERVIEW</span>
+          <h2 class="text-3xl sm:text-4xl md:text-5xl font-display font-extrabold uppercase tracking-tight text-white">
+            BIẾN Ý TƯỞNG THÀNH <span class="text-brand-500">HỆ THỐNG THỰC TẾ</span>
+          </h2>
+          <p class="text-sm text-gray-400 font-light">
+            Tổng quan năng lực kỹ thuật, chỉ số hệ thống và thời gian làm việc thực tế tại TP. Hồ Chí Minh.
+          </p>
+        </div>
+
+        <!-- Bento Row 1: Narrative (6 cols) + 2x2 Key Metrics (6 cols) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
           
-          <!-- Bento Card 1: Narrative & What I Build (5 cols) -->
-          <div class="lg:col-span-5 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 flex flex-col justify-between space-y-4 transition-colors">
-            <div>
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-[11px] font-mono uppercase tracking-widest text-brand-400">01 // WHAT I BUILD</span>
-                <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+          <!-- Bento 01 // NARRATIVE -->
+          <div class="lg:col-span-6 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 sm:p-8 flex flex-col justify-between space-y-5 transition-colors">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-mono uppercase tracking-widest text-brand-400 bg-brand-950/60 border border-brand-800/40 px-2.5 py-1 rounded-md">01 // NARRATIVE</span>
+                <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
               </div>
-              <h3 class="text-lg font-display font-bold uppercase tracking-wide text-white">
-                TỪ Ý TƯỞNG ĐẾN HỆ THỐNG PRODUCTION
+              <h3 class="text-xl sm:text-2xl font-display font-bold uppercase tracking-wide text-white">
+                KIẾN TRÚC BACKEND & FULLSTACK WEB
               </h3>
-              <p class="text-xs sm:text-sm text-gray-400 mt-2 leading-relaxed font-light">
-                Xây dựng hệ thống Backend phân tầng với <strong class="text-gray-200">Java Spring Boot 3</strong> & <strong class="text-gray-200">PostgreSQL</strong>, ứng dụng Fullstack <strong class="text-gray-200">React / Node.js</strong>, quy trình kiểm thử tự động hàng nghìn test cases và tích hợp <strong class="text-gray-200">Gemini AI</strong>.
+              <p class="text-sm text-gray-400 leading-relaxed font-light">
+                Là sinh viên Khoa học Máy tính tại <strong class="text-gray-200">HCMUTE</strong>, tôi tập trung xây dựng các hệ thống phần mềm hoàn chỉnh từ thiết kế cơ sở dữ liệu quan hệ chuẩn 3NF đến giao diện người dùng hiện đại.
+              </p>
+              <p class="text-sm text-gray-400 leading-relaxed font-light">
+                Từ hệ thống chuỗi bán lẻ OMO <strong class="text-gray-200">UTECOFFE</strong> (34 bảng PostgreSQL, WebSocket KDS) đến <strong class="text-gray-200">Fullstack-Ecommerce</strong> (3.151 bài test tự động), mọi sản phẩm đều đặt tính ổn định và bảo mật lên hàng đầu.
               </p>
             </div>
-            <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-[#1f242e]">
-              <a href="#journey" class="text-xs font-mono text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors">
-                <span>Đọc hành trình của tôi</span>
+            <div class="flex flex-wrap items-center gap-4 pt-3 border-t border-[#1f242e]">
+              <a href="#journey" class="text-xs font-mono text-brand-400 hover:text-brand-300 flex items-center gap-1.5 transition-colors">
+                <span>Xem lộ trình phát triển</span>
                 <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
               </a>
               <span class="text-gray-700">•</span>
-              <button type="button" onclick="document.getElementById('download-cv-btn').click()" class="text-xs font-mono text-gray-300 hover:text-white flex items-center gap-1 transition-colors">
+              <button type="button" onclick="document.getElementById('download-cv-btn').click()" class="text-xs font-mono text-gray-300 hover:text-white flex items-center gap-1.5 transition-colors">
                 <i data-lucide="file-text" class="w-3.5 h-3.5 text-brand-400"></i>
-                <span>Xem CV</span>
+                <span>Mở Hồ Sơ CV</span>
               </button>
             </div>
           </div>
 
-          <!-- Bento Card 2: Tech Stack Matrix (4 cols) -->
-          <div class="lg:col-span-4 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 flex flex-col justify-between space-y-4 transition-colors">
-            <div>
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-[11px] font-mono uppercase tracking-widest text-brand-400">02 // CORE TECH STACK</span>
-                <i data-lucide="cpu" class="w-4 h-4 text-gray-500"></i>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <span class="text-xs font-mono bg-[#181c28] text-amber-300 border border-amber-800/40 px-2.5 py-1 rounded-lg">Java 21</span>
-                <span class="text-xs font-mono bg-[#181c28] text-emerald-300 border border-emerald-800/40 px-2.5 py-1 rounded-lg">Spring Boot 3</span>
-                <span class="text-xs font-mono bg-[#181c28] text-sky-300 border border-sky-800/40 px-2.5 py-1 rounded-lg">React.js</span>
-                <span class="text-xs font-mono bg-[#181c28] text-green-300 border border-green-800/40 px-2.5 py-1 rounded-lg">Node.js</span>
-                <span class="text-xs font-mono bg-[#181c28] text-indigo-300 border border-indigo-800/40 px-2.5 py-1 rounded-lg">PostgreSQL</span>
-                <span class="text-xs font-mono bg-[#181c28] text-emerald-400 border border-emerald-800/40 px-2.5 py-1 rounded-lg">MongoDB</span>
-                <span class="text-xs font-mono bg-[#181c28] text-cyan-300 border border-cyan-800/40 px-2.5 py-1 rounded-lg">Tailwind CSS</span>
-                <span class="text-xs font-mono bg-[#181c28] text-blue-300 border border-blue-800/40 px-2.5 py-1 rounded-lg">Docker</span>
-                <span class="text-xs font-mono bg-[#181c28] text-purple-300 border border-purple-800/40 px-2.5 py-1 rounded-lg">Gemini API</span>
-                <span class="text-xs font-mono bg-[#181c28] text-gray-300 border border-gray-700 px-2.5 py-1 rounded-lg">Git & CI/CD</span>
-              </div>
+          <!-- Bento 02 // KEY METRICS (2x2 Grid matching haast.my.id) -->
+          <div class="lg:col-span-6 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 sm:p-8 flex flex-col justify-between space-y-5 transition-colors">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-mono uppercase tracking-widest text-brand-400 bg-brand-950/60 border border-brand-800/40 px-2.5 py-1 rounded-md">02 // KEY METRICS</span>
+              <i data-lucide="bar-chart-3" class="w-4 h-4 text-gray-500"></i>
             </div>
-            <p class="text-[11px] font-mono text-gray-500 pt-2 border-t border-[#1f242e]">
-              100% áp dụng thực tế trong các dự án trên GitHub
-            </p>
-          </div>
 
-          <!-- Bento Card 3: Live Studio Clock (3 cols) -->
-          <div class="lg:col-span-3 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 flex flex-col justify-between text-center transition-colors">
-            <div class="flex items-center justify-center gap-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-              <span class="text-[11px] font-mono uppercase tracking-widest text-gray-400">03 // STUDIO CLOCK</span>
-            </div>
-            <div class="my-3">
-              <div id="studio-clock-time" class="text-3xl sm:text-4xl font-mono font-bold text-white tracking-wider">
-                00:00:00
-              </div>
-              <div id="studio-clock-date" class="text-xs font-mono text-brand-400 mt-1">
-                TP. Hồ Chí Minh (GMT+7)
-              </div>
-            </div>
-            <div class="text-[11px] font-mono text-gray-500 pt-2 border-t border-[#1f242e]">
-              Saigon, Vietnam • HCMUTE
+            <div class="grid grid-cols-2 gap-4 flex-1">
+              <a href="https://github.com/JiaysTM17?tab=repositories" target="_blank" rel="noopener noreferrer" class="bg-[#0d0f15] border border-[#1d2230] hover:border-brand-500/50 rounded-xl p-4 flex flex-col justify-center transition-all group">
+                <span class="text-3xl sm:text-4xl font-display font-black text-white group-hover:text-brand-400 transition-colors">10+</span>
+                <span class="text-xs font-mono text-gray-400 mt-1">Public Repositories</span>
+              </a>
+              <a href="https://github.com/JiaysTM17/UTECoffe" target="_blank" rel="noopener noreferrer" class="bg-[#0d0f15] border border-[#1d2230] hover:border-brand-500/50 rounded-xl p-4 flex flex-col justify-center transition-all group">
+                <span class="text-3xl sm:text-4xl font-display font-black text-white group-hover:text-brand-400 transition-colors">34</span>
+                <span class="text-xs font-mono text-gray-400 mt-1">Bảng CSDL UTECoffe</span>
+              </a>
+              <a href="https://github.com/JiaysTM17/Fullstack-Ecommerce" target="_blank" rel="noopener noreferrer" class="bg-[#0d0f15] border border-[#1d2230] hover:border-brand-500/50 rounded-xl p-4 flex flex-col justify-center transition-all group">
+                <span class="text-3xl sm:text-4xl font-display font-black text-emerald-400">3,151</span>
+                <span class="text-xs font-mono text-gray-400 mt-1">Tests Passed (100%)</span>
+              </a>
+              <a href="https://utecoffe.io.vn" target="_blank" rel="noopener noreferrer" class="bg-[#0d0f15] border border-[#1d2230] hover:border-brand-500/50 rounded-xl p-4 flex flex-col justify-center transition-all group">
+                <span class="text-3xl sm:text-4xl font-display font-black text-brand-400">24/7</span>
+                <span class="text-xs font-mono text-gray-400 mt-1">Cloud Production Ready</span>
+              </a>
             </div>
           </div>
 
         </div>
+
+        <!-- Bento Row 2: Tech Stack Matrix (7 cols) + Live Studio Clock (5 cols) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Bento 03 // CORE TECH STACK -->
+          <div class="lg:col-span-7 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 flex flex-col justify-between space-y-4 transition-colors">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-mono uppercase tracking-widest text-brand-400 bg-brand-950/60 border border-brand-800/40 px-2.5 py-1 rounded-md">03 // CORE TECH STACK</span>
+              <i data-lucide="cpu" class="w-4 h-4 text-gray-500"></i>
+            </div>
+            <div class="flex flex-wrap gap-2.5">
+              <span class="text-xs font-mono bg-[#181c28] text-amber-300 border border-amber-800/40 px-3 py-1.5 rounded-lg">Java 21 LTS</span>
+              <span class="text-xs font-mono bg-[#181c28] text-emerald-300 border border-emerald-800/40 px-3 py-1.5 rounded-lg">Spring Boot 3.3.5</span>
+              <span class="text-xs font-mono bg-[#181c28] text-sky-300 border border-sky-800/40 px-3 py-1.5 rounded-lg">React.js</span>
+              <span class="text-xs font-mono bg-[#181c28] text-green-300 border border-green-800/40 px-3 py-1.5 rounded-lg">Node.js & Express</span>
+              <span class="text-xs font-mono bg-[#181c28] text-indigo-300 border border-indigo-800/40 px-3 py-1.5 rounded-lg">PostgreSQL & JPA</span>
+              <span class="text-xs font-mono bg-[#181c28] text-emerald-400 border border-emerald-800/40 px-3 py-1.5 rounded-lg">MongoDB</span>
+              <span class="text-xs font-mono bg-[#181c28] text-cyan-300 border border-cyan-800/40 px-3 py-1.5 rounded-lg">Tailwind CSS</span>
+              <span class="text-xs font-mono bg-[#181c28] text-blue-300 border border-blue-800/40 px-3 py-1.5 rounded-lg">Docker & Nginx</span>
+              <span class="text-xs font-mono bg-[#181c28] text-purple-300 border border-purple-800/40 px-3 py-1.5 rounded-lg">Gemini API</span>
+              <span class="text-xs font-mono bg-[#181c28] text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg">GitHub Actions</span>
+            </div>
+          </div>
+
+          <!-- Bento 04 // LIVE STUDIO CLOCK -->
+          <div class="lg:col-span-5 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 flex flex-col justify-between text-center transition-colors">
+            <div class="flex items-center justify-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span class="text-[11px] font-mono uppercase tracking-widest text-gray-400">04 // STUDIO CLOCK</span>
+            </div>
+            <div class="my-2">
+              <div id="studio-clock-time" class="text-4xl sm:text-5xl font-mono font-bold text-white tracking-wider">
+                00:00:00
+              </div>
+              <div id="studio-clock-date" class="text-xs font-mono text-brand-400 mt-1.5">
+                TP. Hồ Chí Minh (GMT+7)
+              </div>
+            </div>
+            <div class="text-[11px] font-mono text-gray-500 pt-2 border-t border-[#1f242e]">
+              Saigon, Vietnam • Đại học Sư phạm Kỹ thuật TP.HCM
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </section>
 
@@ -743,6 +790,91 @@
       </div>
     </section>
 
+    <!-- SECTION: TECHNICAL ARCHITECTURE & DOCUMENTATION (Inspired by hoangtu.dev Recent Acceptances) -->
+    <section id="docs" class="py-20 md:py-24 border-b border-[#1f242e]/40 relative bg-[#090a0d]">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div>
+            <div class="flex items-center gap-2 text-brand-400 font-mono text-xs uppercase tracking-widest mb-2">
+              <span>02.5 / ARCHITECTURE & REPORTS</span>
+            </div>
+            <h2 class="text-3xl sm:text-4xl font-display font-bold tracking-tight uppercase text-white">
+              TÀI LIỆU KIẾN TRÚC & BÁO CÁO KỸ THUẬT
+            </h2>
+          </div>
+          <p class="text-gray-400 text-sm max-w-md font-light leading-relaxed md:text-right">
+            Hệ thống đặc tả thiết kế CSDL, luồng nghiệp vụ và báo cáo kiểm thử tự động đính kèm trực tiếp trong từng repository.
+          </p>
+        </div>
+
+        <div class="space-y-4">
+          
+          <!-- Doc 1 -->
+          <div class="bg-[#12141a] border border-[#1f242e] hover:border-brand-600/50 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all">
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2.5 py-0.5 rounded-md">VERIFIED ARCHITECTURE</span>
+                <span class="text-[11px] font-mono text-gray-400">Spring Boot 3.3.5 • PostgreSQL 34 Tables</span>
+              </div>
+              <h3 class="text-lg sm:text-xl font-bold text-white">
+                UTECOFFE — Kiến trúc OMO, Quầy KDS Realtime & 8 Thuật Toán Doanh Nghiệp
+              </h3>
+              <p class="text-xs sm:text-sm text-gray-400 font-light">
+                Hồ sơ thiết kế CSDL 34 bảng chuẩn 3NF, luồng đồng bộ đơn hàng Barista STOMP WebSocket và hướng dẫn triển khai Nginx/SSL 24/7 tại <code class="text-brand-400">utecoffe.io.vn</code>.
+              </p>
+            </div>
+            <a href="https://github.com/JiaysTM17/UTECoffe" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-mono font-semibold uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+              <span>Xem Tài Liệu</span>
+              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+            </a>
+          </div>
+
+          <!-- Doc 2 -->
+          <div class="bg-[#12141a] border border-[#1f242e] hover:border-brand-600/50 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all">
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <span class="text-[11px] font-mono font-bold text-brand-400 bg-brand-950/60 border border-brand-800/50 px-2.5 py-0.5 rounded-md">100% TEST PASS</span>
+                <span class="text-[11px] font-mono text-gray-400">3,151 Automated Tests • 1.29s Execution</span>
+              </div>
+              <h3 class="text-lg sm:text-xl font-bold text-white">
+                Fullstack E-Commerce — Báo Cáo Kiểm Thử 4 Tầng & Bảo Mật OWASP
+              </h3>
+              <p class="text-xs sm:text-sm text-gray-400 font-light">
+                Bao gồm đặc tả 9 nhóm RESTful API, Postman Collection v2.1.0, kiểm thử biên (Boundary Validation), phân quyền RBAC và kịch bản UAT toàn diện.
+              </p>
+            </div>
+            <a href="https://github.com/JiaysTM17/Fullstack-Ecommerce" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 inline-flex items-center justify-center gap-2 bg-[#181c28] hover:bg-brand-600 border border-[#2a3142] text-white text-xs font-mono font-semibold uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+              <span>Xem Báo Cáo</span>
+              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+            </a>
+          </div>
+
+          <!-- Doc 3 -->
+          <div class="bg-[#12141a] border border-[#1f242e] hover:border-brand-600/50 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all">
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <span class="text-[11px] font-mono font-bold text-purple-400 bg-purple-950/60 border border-purple-800/50 px-2.5 py-0.5 rounded-md">SYSTEM DESIGN</span>
+                <span class="text-[11px] font-mono text-gray-400">MERN Stack • Brand Visual Identity</span>
+              </div>
+              <h3 class="text-lg sm:text-xl font-bold text-white">
+                NEXORA — Hồ Sơ Thiết Kế Hệ Thống & Ma Trận Đồng Bộ Nghiệp Vụ
+              </h3>
+              <p class="text-xs sm:text-sm text-gray-400 font-light">
+                Tài liệu phân tích nghiệp vụ sàn thời trang OOTD Community, luồng thu cũ đổi mới Re-Loved Trade-In và hệ thống nhận diện thương hiệu chuẩn hóa.
+              </p>
+            </div>
+            <a href="https://github.com/JiaysTM17/nexora" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 inline-flex items-center justify-center gap-2 bg-[#181c28] hover:bg-brand-600 border border-[#2a3142] text-white text-xs font-mono font-semibold uppercase tracking-wider px-5 py-3 rounded-xl transition-colors">
+              <span>Xem Hồ Sơ</span>
+              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+            </a>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
     <!-- INTERMISSION BANNER STRIP -->
     <section class="py-8 bg-black/60 border-y border-[#1f242e]/50 overflow-hidden select-none">
       <div class="max-w-7xl mx-auto px-4">
@@ -1090,40 +1222,45 @@
               Bạn có cơ hội thực tập, dự án phát triển phần mềm hay muốn trao đổi thảo luận về công nghệ? Hãy gửi lời nhắn, tôi luôn sẵn sàng lắng nghe.
             </p>
 
-            <!-- Direct Contact List (All Clickable!) -->
+            <!-- Direct Contact List (All Clickable + Click-to-Copy Email!) -->
             <div class="space-y-4 pt-4">
               
-              <a href="mailto:truonggiakiet110806@gmail.com" class="flex items-center gap-4 text-gray-300 hover:text-brand-400 transition-colors group">
-                <div class="w-11 h-11 rounded-xl bg-[#12151d] border border-[#232938] flex items-center justify-center text-brand-400 group-hover:border-brand-500 transition-colors">
-                  <i data-lucide="mail" class="w-5 h-5"></i>
+              <div id="copy-email-btn" role="button" tabindex="0" class="flex items-center justify-between gap-4 bg-[#12151d] border border-[#232938] hover:border-brand-500 p-4 rounded-2xl cursor-pointer transition-all group">
+                <div class="flex items-center gap-4">
+                  <div class="w-11 h-11 rounded-xl bg-brand-950/60 border border-brand-800/40 flex items-center justify-center text-brand-400">
+                    <i data-lucide="mail" class="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-gray-400 font-mono uppercase tracking-widest">Email (Nhấp để sao chép)</p>
+                    <p class="text-sm font-semibold text-white group-hover:text-brand-400 transition-colors">truonggiakiet110806@gmail.com</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-xs text-gray-500 font-mono">Email liên hệ trực tiếp</p>
-                  <p class="text-sm font-semibold text-white group-hover:text-brand-400">truonggiakiet110806@gmail.com</p>
-                </div>
-              </a>
+                <span id="copy-email-badge" class="text-xs font-mono text-gray-400 group-hover:text-brand-400 flex items-center gap-1.5 bg-[#090a0d] px-3 py-1.5 rounded-lg border border-[#232938]">
+                  <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                  <span>Copy</span>
+                </span>
+              </div>
 
-              <a href="https://github.com/JiaysTM17" target="_blank" rel="noopener noreferrer" class="flex items-center gap-4 text-gray-300 hover:text-brand-400 transition-colors group">
-                <div class="w-11 h-11 rounded-xl bg-[#12151d] border border-[#232938] flex items-center justify-center text-brand-400 group-hover:border-brand-500 transition-colors">
-                  <i data-lucide="github" class="w-5 h-5"></i>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 font-mono">GitHub Profile & Repositories</p>
-                  <p class="text-sm font-semibold text-white group-hover:text-brand-400">github.com/JiaysTM17</p>
-                </div>
-              </a>
+              <!-- Quick Profile Links Grid (hoangtu.dev style) -->
+              <div class="grid grid-cols-2 gap-3 pt-1">
+                <a href="https://github.com/JiaysTM17" target="_blank" rel="noopener noreferrer" class="bg-[#12151d] border border-[#232938] hover:border-brand-500 p-4 rounded-2xl flex items-center gap-3 transition-all group">
+                  <i data-lucide="github" class="w-5 h-5 text-brand-400 group-hover:scale-110 transition-transform"></i>
+                  <div>
+                    <p class="text-xs font-bold text-white">GitHub</p>
+                    <p class="text-[11px] font-mono text-gray-400">@JiaysTM17</p>
+                  </div>
+                </a>
 
-              <a href="https://utecoffe.io.vn" target="_blank" rel="noopener noreferrer" class="flex items-center gap-4 text-gray-300 hover:text-brand-400 transition-colors group">
-                <div class="w-11 h-11 rounded-xl bg-[#12151d] border border-[#232938] flex items-center justify-center text-brand-400 group-hover:border-brand-500 transition-colors">
-                  <i data-lucide="globe" class="w-5 h-5"></i>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 font-mono">Dự án triển khai thực tế</p>
-                  <p class="text-sm font-semibold text-white group-hover:text-brand-400">utecoffe.io.vn</p>
-                </div>
-              </a>
+                <a href="https://utecoffe.io.vn" target="_blank" rel="noopener noreferrer" class="bg-[#12151d] border border-[#232938] hover:border-brand-500 p-4 rounded-2xl flex items-center gap-3 transition-all group">
+                  <i data-lucide="globe" class="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                  <div>
+                    <p class="text-xs font-bold text-white">Live Demo</p>
+                    <p class="text-[11px] font-mono text-gray-400">utecoffe.io.vn</p>
+                  </div>
+                </a>
+              </div>
 
-              <div class="flex items-center gap-4 text-gray-300">
+              <div class="flex items-center gap-4 text-gray-300 pt-1">
                 <div class="w-11 h-11 rounded-xl bg-[#12151d] border border-[#232938] flex items-center justify-center text-emerald-400">
                   <i data-lucide="map-pin" class="w-5 h-5"></i>
                 </div>
@@ -1384,6 +1521,12 @@
       </div>
 
     </div>
+  </div>
+
+  <!-- GLOBAL TOAST NOTIFICATION -->
+  <div id="toast-notification" class="fixed bottom-6 right-6 z-50 bg-[#12151d] border border-brand-500/60 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-message" class="text-xs font-mono">Thông báo</span>
   </div>
 
   <script src="script.js"></script>

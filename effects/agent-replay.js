@@ -1,24 +1,32 @@
-// Swarm Rebuild — Authentic Multi-Agent UI/UX Build Replay
-// 1. Orbital "Scanning page..." intro with 18 clean agent pointers
-// 2. Comprehensive section-by-section parallel build (zero elements skipped)
-// 3. Smooth Touring auto-scroll that waits for each section to finish building
-// 4. Live dynamic 1x / 2x / 3x speed switching without restarting or losing cursors
-// 5. Web Audio API UI sound effects & Victory circle regroup
+// Swarm Rebuild — Calm, Authentic Multi-Agent UI/UX Build Replay
+// Purposeful per-agent assignment (NO random teleporting), deliberate 1x/2x/3x pacing,
+// Orbital "Scanning page..." intro, section-by-section Touring scroll, and Web Audio SFX.
 
 (function () {
-  const AGENT_COUNT = 18;
+  const AGENT_COUNT = 16;
   const AGENT_COLORS = [
     '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b',
-    '#10b981', '#06b6d4', '#f43f5e', '#6366f1', '#14b8a6'
+    '#10b981', '#06b6d4', '#f43f5e', '#6366f1'
   ];
 
-  // Collect every visible section and its constituent leaf/card elements so nothing is left out
   const SECTION_GROUPS = [
     {
-      name: 'Header',
-      root: 'header',
+      name: 'Hero & Header',
+      root: '#hero',
+      scrollOffset: 0,
       items: [
+        { sel: '#hero .font-display.font-black.tracking-tighter', type: 'box' },
         { sel: 'header a.group', type: 'box' },
+        { sel: '#hero .inline-flex.rounded-full', type: 'box' },
+        { sel: '#hero .font-handwriting', type: 'text' },
+        { sel: '#hero h1', type: 'text' },
+        { sel: '#hero h2', type: 'text' },
+        { sel: '#hero img[alt*="Trương Gia Kiệt"]', type: 'box' },
+        { sel: '#hero p.text-gray-300', type: 'box' },
+        { sel: '#hero a[href="#works"]', type: 'box' },
+        { sel: '#hero a[href*="github.com"]', type: 'box' },
+        { sel: '#hero .flex.flex-wrap.items-center.gap-5', type: 'box' },
+        { sel: '#hero .md\\:col-span-2 > a', type: 'box' },
         { sel: 'header nav a', type: 'text' },
         { sel: 'header #zen-mode-btn', type: 'box' },
         { sel: 'header a[href="#contact"]', type: 'box' },
@@ -26,29 +34,13 @@
       ]
     },
     {
-      name: 'Hero',
-      root: '#hero',
-      items: [
-        { sel: '#hero .font-display.font-black.tracking-tighter', type: 'box' },
-        { sel: '#hero .inline-flex.rounded-full', type: 'box' },
-        { sel: '#hero .font-handwriting', type: 'text' },
-        { sel: '#hero h1', type: 'text' },
-        { sel: '#hero h2', type: 'text' },
-        { sel: '#hero p.text-gray-300', type: 'text' },
-        { sel: '#hero img[alt*="Trương Gia Kiệt"]', type: 'box' },
-        { sel: '#hero a[href="#works"]', type: 'box' },
-        { sel: '#hero a[href*="github.com"]', type: 'box' },
-        { sel: '#hero .flex.flex-wrap.items-center.gap-5', type: 'box' },
-        { sel: '#hero .md\\:col-span-2 > a', type: 'box' }
-      ]
-    },
-    {
       name: 'Engineering Hub',
       root: 'section.bg-\\[\\#0b0c10\\]',
+      scrollOffset: 85,
       items: [
         { sel: 'section.bg-\\[\\#0b0c10\\] .text-center span', type: 'text' },
         { sel: 'section.bg-\\[\\#0b0c10\\] h2', type: 'text' },
-        { sel: 'section.bg-\\[\\#0b0c10\\] .text-center p', type: 'text' },
+        { sel: 'section.bg-\\[\\#0b0c10\\] .text-center p', type: 'box' },
         { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-6 h3', type: 'text' },
         { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-6 p', type: 'box' },
         { sel: 'section.bg-\\[\\#0b0c10\\] .grid-cols-2 > a', type: 'box' },
@@ -59,6 +51,7 @@
     {
       name: 'Selected Works',
       root: '#works',
+      scrollOffset: 85,
       items: [
         { sel: '#works .font-mono.uppercase', type: 'text' },
         { sel: '#works h2', type: 'text' },
@@ -71,6 +64,7 @@
     {
       name: 'Technical Focus',
       root: '#services',
+      scrollOffset: 85,
       items: [
         { sel: '#services h2', type: 'text' },
         { sel: '#services .text-6xl', type: 'box' },
@@ -81,6 +75,7 @@
     {
       name: 'Architecture Docs',
       root: '#docs',
+      scrollOffset: 85,
       items: [
         { sel: '#docs h2', type: 'text' },
         { sel: '#docs .space-y-4 > div', type: 'box' }
@@ -89,6 +84,7 @@
     {
       name: 'About Me',
       root: '#about',
+      scrollOffset: 85,
       items: [
         { sel: '#about h2', type: 'text' },
         { sel: '#about blockquote', type: 'text' },
@@ -100,6 +96,7 @@
     {
       name: 'Journey & Resume',
       root: '#journey',
+      scrollOffset: 85,
       items: [
         { sel: '#journey h2', type: 'text' },
         { sel: '#journey .space-y-6 > div', type: 'box' },
@@ -109,6 +106,7 @@
     {
       name: 'Contact & Footer',
       root: '#contact',
+      scrollOffset: 85,
       items: [
         { sel: '#contact h2', type: 'text' },
         { sel: '#contact #copy-email-btn', type: 'box' },
@@ -128,7 +126,6 @@
   let savedHTMLMap = new Map();
   let orbitAnimId = null;
 
-  // Dynamic sleep that adapts LIVE when speedMultiplier changes (1x -> 2x -> 3x)
   function dynamicWait(baseMs, runId) {
     return new Promise(resolve => {
       let elapsed = 0;
@@ -138,7 +135,7 @@
           resolve(false);
           return;
         }
-        const dt = now - last;
+        const dt = Math.min(60, now - last);
         last = now;
         elapsed += dt * speedMultiplier;
         if (elapsed >= baseMs) {
@@ -151,8 +148,7 @@
     });
   }
 
-  // Smooth scroll that takes ~650ms (scaled by speedMultiplier)
-  function smoothScrollTo(targetY, runId) {
+  function smoothScrollTo(targetY, runId, baseDuration = 950) {
     return new Promise(resolve => {
       const startY = window.scrollY;
       const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
@@ -164,18 +160,16 @@
       }
       let progress = 0;
       let last = performance.now();
-      const baseDuration = 650;
 
       function frame(now) {
         if (!isReplaying || runId !== replayRunId) {
           resolve(false);
           return;
         }
-        const dt = now - last;
+        const dt = Math.min(60, now - last);
         last = now;
         progress += (dt * speedMultiplier) / baseDuration;
         const t = Math.min(1, progress);
-        // easeInOutCubic
         const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
         window.scrollTo(0, startY + diff * ease);
         if (t >= 1) {
@@ -188,7 +182,6 @@
     });
   }
 
-  // Web Audio API Synthesizer
   function ensureAudio() {
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -217,9 +210,9 @@
     } catch (_) {}
   }
 
-  function playDragSound() { playTone(460 + Math.random() * 140, 0.04, 0.018, 'triangle'); }
-  function playTypeSound() { playTone(820 + Math.random() * 180, 0.02, 0.012, 'square'); }
-  function playSnapSound() { playTone(340 + Math.random() * 160, 0.05, 0.022, 'sine'); }
+  function playDragSound() { playTone(440 + Math.random() * 120, 0.04, 0.015, 'triangle'); }
+  function playTypeSound() { playTone(780 + Math.random() * 180, 0.02, 0.01, 'square'); }
+  function playSnapSound() { playTone(320 + Math.random() * 140, 0.05, 0.02, 'sine'); }
   function playCompleteChime() {
     if (!soundEnabled) return;
     setTimeout(() => playTone(523.25, 0.14, 0.04, 'sine'), 0);
@@ -254,7 +247,12 @@
         });
       });
       if (items.length > 0) {
-        sections.push({ name: group.name, rootEl, items });
+        sections.push({
+          name: group.name,
+          rootEl,
+          scrollOffset: group.scrollOffset,
+          items
+        });
       }
     });
 
@@ -277,7 +275,6 @@
     overlay.appendChild(guideH);
     overlay.appendChild(guideV);
 
-    // 18 Clean Agent Cursors
     const cursors = [];
     for (let i = 0; i < AGENT_COUNT; i++) {
       const color = AGENT_COLORS[i % AGENT_COLORS.length];
@@ -289,13 +286,12 @@
       cursors.push({
         el: cur,
         x: window.innerWidth * 0.5,
-        y: window.innerHeight * 0.5
+        y: window.innerHeight * 0.45
       });
     }
 
     document.body.appendChild(overlay);
 
-    // Floating Control Dock
     const dock = document.createElement('div');
     dock.id = 'agent-replay-dock';
     dock.innerHTML = `
@@ -306,8 +302,8 @@
         <span class="w-4 h-4 rounded-full bg-amber-500 border border-[#0d0f17]"></span>
         <span class="w-4 h-4 rounded-full bg-emerald-500 border border-[#0d0f17]"></span>
       </div>
-      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">18 agents</span>
-      <button id="replay-tour-btn" type="button" title="Tự động cuộn chậm theo tiến trình thiết kế" class="px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors">Touring</button>
+      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">16 agents</span>
+      <button id="replay-tour-btn" type="button" title="Tự động cuộn chậm theo tiến trình thiết kế" class="px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors">Tour</button>
       <button id="replay-speed-btn" type="button" title="Tốc độ 1x / 2x / 3x" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-200 border border-[#2d364d] transition-colors">1x</button>
       <button id="replay-sound-btn" type="button" title="Bật / Tắt âm thanh thiết kế" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-400 border border-[#2d364d] transition-colors">🔇</button>
       <button id="replay-action-btn" type="button" class="px-3 py-1 rounded-full bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors whitespace-nowrap">Replay</button>
@@ -329,11 +325,14 @@
     const actionBtn = document.getElementById('replay-action-btn');
     const minimizeBtn = document.getElementById('replay-minimize-btn');
 
-    function setCursorPos(cursorObj, x, y, durationMs = 280) {
-      cursorObj.x = x;
-      cursorObj.y = y;
-      cursorObj.el.style.transition = `transform ${Math.max(80, Math.round(durationMs / speedMultiplier))}ms cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease`;
-      cursorObj.el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    function setCursorPos(cursorObj, x, y, baseDurationMs = 380) {
+      const clampedX = Math.min(window.innerWidth - 28, Math.max(8, x));
+      const clampedY = Math.min(window.innerHeight - 28, Math.max(8, y));
+      cursorObj.x = clampedX;
+      cursorObj.y = clampedY;
+      const dur = Math.max(60, Math.round(baseDurationMs / speedMultiplier));
+      cursorObj.el.style.transition = `transform ${dur}ms cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease`;
+      cursorObj.el.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0)`;
     }
 
     function restoreAllSavedText() {
@@ -359,11 +358,9 @@
       restoreAllSavedText();
       cleanupActiveDragBoxes();
 
-      document.querySelectorAll('.swarm-blank-layer, .swarm-clip-revealing').forEach(el => {
-        el.classList.remove('swarm-blank-layer', 'swarm-clip-revealing');
+      document.querySelectorAll('.swarm-blank-layer').forEach(el => {
+        el.classList.remove('swarm-blank-layer');
         el.classList.add('swarm-built-layer');
-        el.style.clipPath = '';
-        el.style.transition = '';
       });
 
       guideH.style.opacity = '0';
@@ -377,13 +374,13 @@
 
       if (completed) {
         playCompleteChime();
-        statusText.textContent = `Rebuilt by 18 agents in ${durationSec.toFixed(1)}s`;
+        statusText.textContent = `Rebuilt by 16 agents in ${durationSec.toFixed(1)}s`;
       } else {
-        statusText.textContent = `18 agents • Live`;
+        statusText.textContent = `16 agents • Live`;
       }
     }
 
-    // Phase 0: Orbital "Scanning page..." ring rotation (like Image 1!)
+    // Phase 0: Orbital "Scanning page..." ring (matches Image 1!)
     function runOrbitalIntro(runId, baseDurationMs) {
       return new Promise(resolve => {
         statusText.textContent = 'Scanning page...';
@@ -404,10 +401,10 @@
             resolve(false);
             return;
           }
-          const dt = now - last;
+          const dt = Math.min(60, now - last);
           last = now;
           elapsed += dt * speedMultiplier;
-          angleOffset += (dt * speedMultiplier) * 0.0042;
+          angleOffset += (dt * speedMultiplier) * 0.004;
 
           cursors.forEach((c, i) => {
             const a = angleOffset + (i / AGENT_COUNT) * Math.PI * 2;
@@ -428,19 +425,19 @@
       });
     }
 
-    // Victory Regroup circle at end of build
+    // Calm Victory Regroup
     async function runVictoryRegroup(runId) {
       const cx = window.innerWidth / 2;
       const cy = window.innerHeight * 0.5;
-      const radius = 90;
+      const radius = 85;
       cursors.forEach((c, i) => {
         const a = (i / AGENT_COUNT) * Math.PI * 2;
-        setCursorPos(c, cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 450);
+        setCursorPos(c, cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 500);
       });
-      await dynamicWait(550, runId);
+      await dynamicWait(650, runId);
     }
 
-    // Typewriter animation with I-beam caret
+    // Calm, readable typewriter animation with I-beam caret
     async function animateTypeText(el, cursorObj, runId) {
       if (!savedHTMLMap.has(el)) {
         savedHTMLMap.set(el, el.innerHTML);
@@ -452,7 +449,7 @@
       el.classList.remove('swarm-blank-layer');
       el.classList.add('swarm-built-layer', 'swarm-typing-caret');
 
-      const steps = Math.min(16, Math.max(5, Math.ceil(fullText.length / 3)));
+      const steps = Math.min(18, Math.max(6, Math.ceil(fullText.length / 2)));
       const charsPerStep = Math.ceil(fullText.length / steps);
 
       for (let s = 1; s <= steps; s++) {
@@ -460,14 +457,12 @@
         const sliceLen = Math.min(fullText.length, s * charsPerStep);
         el.textContent = fullText.slice(0, sliceLen);
 
-        // Move agent cursor smoothly along the typing end
         const r = el.getBoundingClientRect();
-        const progressRatio = sliceLen / fullText.length;
-        setCursorPos(cursorObj, r.left + Math.min(r.width, r.width * progressRatio + 10), r.top + r.height * 0.65, 90);
+        const ratio = sliceLen / fullText.length;
+        setCursorPos(cursorObj, r.left + Math.min(r.width, r.width * ratio + 8), r.top + r.height * 0.6, 80);
         playTypeSound();
 
-        const ok = await dynamicWait(42, runId);
-        if (!ok) return;
+        if (!(await dynamicWait(55, runId))) return;
       }
 
       el.classList.remove('swarm-typing-caret');
@@ -477,7 +472,7 @@
       }
     }
 
-    // Drag wireframe box from 0x0 -> WxH, then reveal element!
+    // Calm, purposeful single-element build (move -> drag wireframe -> reveal/type)
     async function buildSingleLayer(item, cursorIdx, runId) {
       if (!isReplaying || runId !== replayRunId) return;
 
@@ -491,14 +486,17 @@
 
       const cursorObj = cursors[cursorIdx % AGENT_COUNT];
 
-      // 1. Agent moves to top-left corner of element
-      setCursorPos(cursorObj, rect.left, rect.top, 220);
+      // 1. Agent glides smoothly to top-left corner of element
+      setCursorPos(cursorObj, rect.left, rect.top, 360);
+      if (!(await dynamicWait(240, runId))) return;
+
+      // 2. Create wireframe box & drag from 16x16 -> W x H with '+' crosshair
       const dragBox = document.createElement('div');
       dragBox.className = 'agent-drag-box';
       dragBox.style.left = `${rect.left}px`;
       dragBox.style.top = `${rect.top}px`;
-      dragBox.style.width = '12px';
-      dragBox.style.height = '12px';
+      dragBox.style.width = '16px';
+      dragBox.style.height = '16px';
       dragBox.innerHTML = `
         <span class="agent-drag-handle tl"></span>
         <span class="agent-drag-handle tr"></span>
@@ -509,43 +507,32 @@
       `;
       overlay.appendChild(dragBox);
 
-      // Snap alignment guides briefly
       guideH.style.opacity = '1';
       guideH.style.top = `${rect.top}px`;
       guideV.style.opacity = '1';
       guideV.style.left = `${rect.left}px`;
 
       playDragSound();
-      if (!(await dynamicWait(110, runId))) { dragBox.remove(); return; }
 
-      // 2. Drag wireframe out to full W x H with '+' crosshair & cursor at bottom-right
-      dragBox.style.transition = `width ${Math.max(90, Math.round(240 / speedMultiplier))}ms ease-out, height ${Math.max(90, Math.round(240 / speedMultiplier))}ms ease-out`;
-      dragBox.style.width = `${rect.width}px`;
-      dragBox.style.height = `${rect.height}px`;
-      setCursorPos(cursorObj, rect.right, rect.bottom, 240);
+      // Animate box drag to full size
+      const dragDur = Math.max(90, Math.round(340 / speedMultiplier));
+      dragBox.style.transition = `width ${dragDur}ms cubic-bezier(0.22, 1, 0.36, 1), height ${dragDur}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      requestAnimationFrame(() => {
+        dragBox.style.width = `${rect.width}px`;
+        dragBox.style.height = `${rect.height}px`;
+      });
+      setCursorPos(cursorObj, rect.right, rect.bottom, 340);
 
-      if (item.mode === 'box') {
-        // Real clip-path crop/draw reveal synchronized with the agent dragging the frame!
-        el.classList.remove('swarm-blank-layer');
-        el.classList.add('swarm-clip-revealing');
-        el.style.transition = `clip-path ${Math.max(120, Math.round(280 / speedMultiplier))}ms cubic-bezier(0.22, 1, 0.36, 1)`;
-        requestAnimationFrame(() => {
-          el.style.clipPath = 'inset(0 0 0 0)';
-        });
-      }
+      if (!(await dynamicWait(420, runId))) { dragBox.remove(); return; }
 
-      if (!(await dynamicWait(260, runId))) { dragBox.remove(); return; }
-
-      // 3. Build actual element (Type text or finalize clip-reveal)
+      // 3. Build element inside the drafted wireframe
       if (item.mode === 'text') {
         await animateTypeText(el, cursorObj, runId);
       } else {
-        el.classList.remove('swarm-clip-revealing');
+        el.classList.remove('swarm-blank-layer');
         el.classList.add('swarm-built-layer');
-        el.style.clipPath = '';
-        el.style.transition = '';
         playSnapSound();
-        if (!(await dynamicWait(100, runId))) { dragBox.remove(); return; }
+        if (!(await dynamicWait(200, runId))) { dragBox.remove(); return; }
       }
 
       dragBox.remove();
@@ -562,7 +549,7 @@
       const { sections, totalLayers } = buildSectionPlan();
       let builtCount = 0;
 
-      // Blank out ENTIRE page
+      // Blank out ENTIRE page cleanly
       sections.forEach(sec => {
         sec.items.forEach(item => {
           item.el.classList.remove('swarm-built-layer');
@@ -575,35 +562,35 @@
       actionBtn.classList.remove('bg-brand-600', 'hover:bg-brand-500');
       actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
 
-      // Phase 0: Orbital "Scanning page..." for ~1.9 seconds (1x)
-      if (!(await runOrbitalIntro(runId, 1900))) return;
+      // Phase 0: Orbital "Scanning page..."
+      if (!(await runOrbitalIntro(runId, 1800))) return;
 
-      // Phase 1: Section-by-Section Deliberate Build + Smooth Touring Scroll
+      // Phase 1: Section-by-Section Deliberate Build + Smooth Touring
       let cursorPointer = 0;
 
       for (const sec of sections) {
         if (!isReplaying || runId !== replayRunId) return;
 
-        // Smooth Touring Scroll to center the current section BEFORE building it
+        // Smooth Touring scroll to this section BEFORE agents build it
         if (touringEnabled) {
           const secRect = sec.rootEl.getBoundingClientRect();
-          const targetScrollY = Math.max(0, window.scrollY + secRect.top - 90);
-          if (!(await smoothScrollTo(targetScrollY, runId))) return;
-          if (!(await dynamicWait(160, runId))) return;
+          const targetY = Math.max(0, window.scrollY + secRect.top - sec.scrollOffset);
+          if (!(await smoothScrollTo(targetY, runId, 950))) return;
+          if (!(await dynamicWait(200, runId))) return;
         }
 
-        // Build elements in this section in parallel batches of 4-5 agents (organized, not chaotic!)
+        // Build elements in calm parallel waves of 4 agents
         const batchSize = 4;
         for (let i = 0; i < sec.items.length; i += batchSize) {
           if (!isReplaying || runId !== replayRunId) return;
           const batch = sec.items.slice(i, i + batchSize);
 
-          // Also keep Touring comfortably aligned if a tall section extends below viewport
+          // Gently adjust scroll if batch is below viewport
           if (touringEnabled) {
             const firstRect = batch[0].el.getBoundingClientRect();
             if (firstRect.top > window.innerHeight * 0.72) {
-              const adjY = window.scrollY + firstRect.top - window.innerHeight * 0.3;
-              if (!(await smoothScrollTo(adjY, runId))) return;
+              const adjY = window.scrollY + firstRect.top - window.innerHeight * 0.28;
+              if (!(await smoothScrollTo(adjY, runId, 750))) return;
             }
           }
 
@@ -613,18 +600,17 @@
               return buildSingleLayer(item, cIdx, runId).then(() => {
                 if (isReplaying && runId === replayRunId) {
                   builtCount++;
-                  statusText.textContent = `18 agents • ${builtCount}/${totalLayers} layers`;
+                  statusText.textContent = `16 agents • ${builtCount}/${totalLayers} layers`;
                 }
               });
             })
           );
 
           cursorPointer = (cursorPointer + batchSize) % AGENT_COUNT;
-          if (!(await dynamicWait(80, runId))) return;
+          if (!(await dynamicWait(120, runId))) return;
         }
       }
 
-      // Phase 2: Victory Regroup & Complete!
       if (!isReplaying || runId !== replayRunId) return;
       await runVictoryRegroup(runId);
 
@@ -632,7 +618,6 @@
       stopReplay(true, totalLayers, elapsedSec);
     }
 
-    // Interactive Controls
     actionBtn.addEventListener('click', () => {
       ensureAudio();
       if (isReplaying) {
@@ -677,7 +662,6 @@
       startReplay();
     });
 
-    // Auto-start on page load
     setTimeout(() => {
       startReplay();
     }, 250);

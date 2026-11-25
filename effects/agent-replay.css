@@ -1,4 +1,4 @@
-/* Swarm Rebuild — Authentic Multi-Agent UI/UX Build Replay */
+/* Swarm Rebuild — Calm, Authentic Multi-Agent UI/UX Build Replay */
 
 #agent-replay-overlay {
   position: fixed;
@@ -8,15 +8,15 @@
   overflow: hidden;
 }
 
-/* Subtle Figma Alignment Guide Lines */
+/* Subtle Alignment Guide Lines */
 .agent-guide-h {
   position: fixed;
   left: 0;
   right: 0;
   height: 1px;
-  background: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.3);
   pointer-events: none;
-  transition: top 0.25s ease, opacity 0.2s ease;
+  transition: top 0.35s ease, opacity 0.25s ease;
 }
 
 .agent-guide-v {
@@ -24,18 +24,18 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.3);
   pointer-events: none;
-  transition: left 0.25s ease, opacity 0.2s ease;
+  transition: left 0.35s ease, opacity 0.25s ease;
 }
 
-/* Per-Agent Active Wireframe / Selection Box */
+/* Wireframe Placeholder Box (like ref_006.png: dark translucent box + blue border + dim pill) */
 .agent-drag-box {
   position: fixed;
-  border: 1px solid rgba(59, 130, 246, 0.75);
-  background: rgba(37, 99, 235, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.55);
+  background: rgba(255, 255, 255, 0.025);
   pointer-events: none;
-  box-shadow: 0 0 12px rgba(37, 99, 235, 0.14);
+  border-radius: 4px;
 }
 
 .agent-drag-handle {
@@ -60,7 +60,7 @@
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
   padding: 0px 5px;
-  border-radius: 3px;
+  border-radius: 2px;
   white-space: nowrap;
 }
 
@@ -68,14 +68,13 @@
   position: absolute;
   bottom: -7px;
   right: -7px;
-  color: #ffffff;
+  color: #e2e8f0;
   font-size: 13px;
   font-weight: 300;
   line-height: 1;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
 }
 
-/* Clean Multiplayer Agent Cursors (No cluttering labels!) */
+/* Clean Agent Cursors */
 .agent-cursor {
   position: fixed;
   top: 0;
@@ -83,7 +82,7 @@
   pointer-events: none;
   z-index: 88;
   will-change: transform;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.75));
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.8));
 }
 
 /* I-Beam Text Typing Caret */
@@ -93,7 +92,7 @@
   color: #93c5fd;
   font-weight: 300;
   margin-left: 2px;
-  animation: swarmBlink 0.45s infinite;
+  animation: swarmBlink 0.5s infinite;
 }
 
 @keyframes swarmBlink {
@@ -101,25 +100,19 @@
   50% { opacity: 0; }
 }
 
-/* Blank Canvas State (Completely empty before build!) */
+/* Blank Canvas State */
 .swarm-blank-layer {
   opacity: 0 !important;
   pointer-events: none !important;
   transition: none !important;
 }
 
-.swarm-clip-revealing {
-  opacity: 1 !important;
-  clip-path: inset(0 100% 100% 0);
-}
-
 .swarm-built-layer {
   opacity: 1 !important;
-  clip-path: inset(0 0 0 0) !important;
-  transition: clip-path 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-out !important;
+  transition: opacity 0.35s ease-out !important;
 }
 
-/* Floating Control Dock at Bottom Center */
+/* Floating Control Dock */
 #agent-replay-dock {
   position: fixed;
   bottom: 18px;

@@ -1,20 +1,20 @@
-// Swarm Rebuild v5 — Full-screen spread, smooth physics, dynamic 14-18 agents
-// Key fixes:
-//  1. Agents wander across ENTIRE viewport at all times (even when no task)
-//  2. Zone system uses viewport cols/rows — spread is always full-screen
-//  3. No getBoundingClientRect() in RAF — zero jitter
-//  4. Dynamic 14-18 agents (varies smoothly over time, fades in/out)
-//  5. Idle agents wander in zone — never stand still, never clustered
-//  6. 300+ layer selectors
+// Swarm Rebuild — 4 Parallel Work Tracks (c1705b1 base + jitter-free + free-roam)
+// Fixes applied on top of c1705b1:
+//  1. ZERO getBoundingClientRect() in RAF → no jitter (use cached a.tx/a.ty)
+//  2. Section-based layer split (top/mid-top/mid-bot/bottom) → agents spread Y
+//  3. Agents roam freely across full viewport when idle (not locked to element bbox)
+//  4. Dynamic 14-18 agents (varies every 35 layers built)
+//  5. Idle agents (no task) wander full screen — never stand still, never hidden unless truly no work
 
 (function () {
   'use strict';
 
-  // ─── Constants ─────────────────────────────────────────────────────────────
-  const NUM_TRACKS  = 4;
-  const MIN_AGENTS  = 14;
-  const MAX_AGENTS  = 18;
-  const INTRO_DUR   = 1700; // ms
+  // ─── Constants ───────────────────────────────────────────────────────────
+  const NUM_TRACKS    = 4;    // parallel work tracks
+  const MIN_AGENTS    = 14;   // dynamic agent count range
+  const MAX_AGENTS    = 18;
+  const AGENTS_TOTAL  = 18;
+  const INTRO_DUR     = 1700; // ms blank-canvas intro
 
   const AGENT_COLORS = [
     '#3b82f6','#8b5cf6','#ec4899','#f59e0b',
@@ -31,211 +31,109 @@
     'Font-Bot','Deploy-1'
   ];
 
-  // ─── Layer Definitions (300+ selectors) ───────────────────────────────────
+  // ─── Layer Definitions ────────────────────────────────────────────────────
   const LAYER_QUERY = [
-    // Header
-    { sel: 'header',                                              label: 'HeaderBar',       type: 'box' },
-    { sel: 'header a.group',                                      label: 'BrandLogo',       type: 'box' },
-    { sel: 'header nav a',                                        label: 'NavLink',         type: 'text' },
-    { sel: 'header .hidden.md\\:flex > a',                        label: 'HeaderBtn',       type: 'box' },
-    { sel: 'header .hidden.md\\:flex',                            label: 'HeaderActions',   type: 'box' },
-    { sel: 'header button',                                       label: 'HeaderBtn2',      type: 'box' },
-    // Hero
-    { sel: '#hero',                                               label: 'HeroSection',     type: 'box' },
-    { sel: '#hero .inline-flex.rounded-full',                     label: 'StudentBadge',    type: 'box' },
-    { sel: '#hero .font-handwriting',                             label: 'Greeting',        type: 'text' },
-    { sel: '#hero h1',                                            label: 'HeroTitle',       type: 'text' },
-    { sel: '#hero h2',                                            label: 'RoleTitle',       type: 'text' },
-    { sel: '#hero h1 span',                                       label: 'HeroTitleSpan',   type: 'text' },
-    { sel: '#hero p.text-gray-300',                               label: 'HeroBio',         type: 'box' },
-    { sel: '#hero .font-display.font-black.tracking-tighter',     label: 'PortfolioBg',     type: 'box' },
-    { sel: '#hero img[alt*="Tr"]',                                label: 'PortraitCutout',  type: 'box' },
-    { sel: '#hero a[href="#works"]',                              label: 'PrimaryCTA',      type: 'box' },
-    { sel: '#hero a[href*="github.com"]',                         label: 'GitHubCTA',       type: 'box' },
-    { sel: '#hero .flex.flex-wrap.items-center.gap-5',            label: 'QuickContact',    type: 'box' },
-    { sel: '#hero .flex.flex-wrap.items-center.gap-5 > *',        label: 'ContactItem',     type: 'box' },
-    { sel: '#hero .md\\:col-span-2 > a',                          label: 'HeroStat',        type: 'box' },
-    { sel: '#hero .grid > *',                                     label: 'HeroGridCell',    type: 'box' },
-    { sel: '#hero [class*="stat"]',                               label: 'StatItem',        type: 'box' },
-    { sel: '#hero [class*="number"]',                             label: 'StatNumber',      type: 'text' },
-    { sel: '#hero [class*="label"]',                              label: 'StatLabel',       type: 'text' },
-    // Bento
-    { sel: 'section.bg-\\[\\#0b0c10\\]',                          label: 'BentoSection',    type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] h2',                       label: 'BentoHeading',    type: 'text' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-6',         label: 'BentoCard',       type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-7',         label: 'TechMatrix',      type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-5',         label: 'StudioClock',     type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] [class*="col-span"]',      label: 'BentoCell',       type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] p',                        label: 'BentoPara',       type: 'text' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] span',                     label: 'BentoSpan',       type: 'text' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] img',                      label: 'BentoImg',        type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] button',                   label: 'BentoBtn',        type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] h3',                       label: 'BentoH3',         type: 'text' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] li',                       label: 'BentoLi',         type: 'box' },
-    { sel: 'section.bg-\\[\\#0b0c10\\] a',                        label: 'BentoLink',       type: 'box' },
-    // Works
-    { sel: '#works',                                              label: 'WorksSection',    type: 'box' },
-    { sel: '#works h2',                                           label: 'WorksTitle',      type: 'text' },
-    { sel: '#works > *',                                          label: 'WorksRow',        type: 'box' },
-    { sel: '#works p',                                            label: 'WorksPara',       type: 'text' },
-    { sel: '#project-filters',                                    label: 'FilterBar',       type: 'box' },
-    { sel: '#project-filters button',                             label: 'FilterTab',       type: 'box' },
-    { sel: '#projects-grid',                                      label: 'ProjectsGrid',    type: 'box' },
-    { sel: '#projects-grid .project-card',                        label: 'ProjectCard',     type: 'box' },
-    { sel: '#projects-grid .project-card h3',                     label: 'CardTitle',       type: 'text' },
-    { sel: '#projects-grid .project-card h4',                     label: 'CardSubtitle',    type: 'text' },
-    { sel: '#projects-grid .project-card p',                      label: 'CardDesc',        type: 'text' },
-    { sel: '#projects-grid .project-card a',                      label: 'CardLink',        type: 'box' },
-    { sel: '#projects-grid .project-card [class*="tag"]',         label: 'CardTag',         type: 'box' },
-    { sel: '#projects-grid .project-card [class*="badge"]',       label: 'CardBadge',       type: 'box' },
-    { sel: '#projects-grid .project-card img',                    label: 'CardImg',         type: 'box' },
-    { sel: '#projects-grid .project-card footer',                 label: 'CardFooter',      type: 'box' },
-    { sel: '#projects-grid .project-card header',                 label: 'CardHeader',      type: 'box' },
-    { sel: '#projects-grid .project-card button',                 label: 'CardBtn',         type: 'box' },
-    { sel: '#projects-grid .project-card span',                   label: 'CardSpan',        type: 'text' },
-    // Services
-    { sel: '#services',                                           label: 'ServicesSection', type: 'box' },
-    { sel: '#services h2',                                        label: 'ServicesTitle',   type: 'text' },
-    { sel: '#services > *',                                       label: 'ServicesRow',     type: 'box' },
-    { sel: '#services p',                                         label: 'ServicesPara',    type: 'text' },
-    { sel: '#services .accordion-item',                           label: 'TechAccordion',   type: 'box' },
-    { sel: '#services .accordion-item h3',                        label: 'AccordionTitle',  type: 'text' },
-    { sel: '#services .accordion-item p',                         label: 'AccordionBody',   type: 'text' },
-    { sel: '#services [class*="badge"]',                          label: 'SkillBadge',      type: 'box' },
-    { sel: '#services [class*="tag"]',                            label: 'SkillTag',        type: 'box' },
-    { sel: '#services button',                                    label: 'AccordionBtn',    type: 'box' },
-    { sel: '#services h3',                                        label: 'ServicesH3',      type: 'text' },
-    { sel: '#services span',                                      label: 'ServicesSpan',    type: 'text' },
-    { sel: '#services li',                                        label: 'ServicesLi',      type: 'box' },
-    // Docs
-    { sel: '#docs',                                               label: 'DocsSection',     type: 'box' },
-    { sel: '#docs h2',                                            label: 'DocsTitle',       type: 'text' },
-    { sel: '#docs .space-y-4 > div',                              label: 'ArchDoc',         type: 'box' },
-    { sel: '#docs .space-y-4 > div h3',                           label: 'DocTitle',        type: 'text' },
-    { sel: '#docs .space-y-4 > div p',                            label: 'DocPara',         type: 'text' },
-    { sel: '#docs .space-y-4 > div a',                            label: 'DocLink',         type: 'box' },
-    { sel: '#docs [class*="card"]',                               label: 'DocCard',         type: 'box' },
-    { sel: '#docs p',                                             label: 'DocsParaGen',     type: 'text' },
-    { sel: '#docs span',                                          label: 'DocsSpan',        type: 'text' },
-    { sel: '#docs a',                                             label: 'DocsLink',        type: 'box' },
-    { sel: '#docs img',                                           label: 'DocsImg',         type: 'box' },
-    { sel: '#docs button',                                        label: 'DocsBtn',         type: 'box' },
-    // About
-    { sel: '#about',                                              label: 'AboutSection',    type: 'box' },
-    { sel: '#about h2',                                           label: 'AboutTitle',      type: 'text' },
-    { sel: '#about .lg\\:col-span-6',                             label: 'AboutColumn',     type: 'box' },
-    { sel: '#about .lg\\:col-span-6 > *',                         label: 'AboutChild',      type: 'box' },
-    { sel: '#about p',                                            label: 'AboutPara',       type: 'text' },
-    { sel: '#about h3',                                           label: 'AboutH3',         type: 'text' },
-    { sel: '#about h4',                                           label: 'AboutH4',         type: 'text' },
-    { sel: '#about [class*="card"]',                              label: 'AboutCard',       type: 'box' },
-    { sel: '#about li',                                           label: 'AboutLi',         type: 'box' },
-    { sel: '#about img',                                          label: 'AboutImg',        type: 'box' },
-    { sel: '#about a',                                            label: 'AboutLink',       type: 'box' },
-    { sel: '#about span',                                         label: 'AboutSpan',       type: 'text' },
-    { sel: '#about [class*="badge"]',                             label: 'AboutBadge',      type: 'box' },
-    { sel: '#about [class*="tag"]',                               label: 'AboutTag',        type: 'box' },
-    // Journey
-    { sel: '#journey',                                            label: 'JourneySection',  type: 'box' },
-    { sel: '#journey h2',                                         label: 'JourneyTitle',    type: 'text' },
-    { sel: '#journey .space-y-6 > div',                           label: 'TimelineItem',    type: 'box' },
-    { sel: '#journey .space-y-6 > div h3',                        label: 'TimelineTitle',   type: 'text' },
-    { sel: '#journey .space-y-6 > div h4',                        label: 'TimelineH4',      type: 'text' },
-    { sel: '#journey .space-y-6 > div p',                         label: 'TimelinePara',    type: 'text' },
-    { sel: '#journey .space-y-6 > div [class*="badge"]',          label: 'TimelineBadge',   type: 'box' },
-    { sel: '#journey .space-y-6 > div [class*="tag"]',            label: 'TimelineTag',     type: 'box' },
-    { sel: '#journey .space-y-6 > div a',                         label: 'TimelineLink',    type: 'box' },
-    { sel: '#journey .space-y-6 > div span',                      label: 'TimelineSpan',    type: 'text' },
-    { sel: '#journey .bg-\\[\\#f5f6f8\\]',                        label: 'ResumeCard',      type: 'box' },
-    { sel: '#journey .bg-\\[\\#f5f6f8\\] h3',                     label: 'ResumeTitle',     type: 'text' },
-    { sel: '#journey .bg-\\[\\#f5f6f8\\] p',                      label: 'ResumePara',      type: 'text' },
-    { sel: '#journey [class*="line"]',                            label: 'TimelineLine',    type: 'box' },
-    { sel: '#journey [class*="dot"]',                             label: 'TimelineDot',     type: 'box' },
-    { sel: '#journey p',                                          label: 'JourneyPara',     type: 'text' },
-    { sel: '#journey span',                                       label: 'JourneySpan',     type: 'text' },
-    // Contact
-    { sel: '#contact',                                            label: 'ContactSection',  type: 'box' },
-    { sel: '#contact h2',                                         label: 'ContactTitle',    type: 'text' },
-    { sel: '#contact p',                                          label: 'ContactPara',     type: 'text' },
-    { sel: '#contact h3',                                         label: 'ContactH3',       type: 'text' },
-    { sel: '#contact #copy-email-btn',                            label: 'EmailCopyCard',   type: 'box' },
-    { sel: '#contact-form',                                       label: 'ContactForm',     type: 'box' },
-    { sel: '#contact-form input',                                 label: 'FormInput',       type: 'box' },
-    { sel: '#contact-form textarea',                              label: 'FormTextarea',    type: 'box' },
-    { sel: '#contact-form button[type="submit"]',                 label: 'FormSubmit',      type: 'box' },
-    { sel: '#contact-form label',                                 label: 'FormLabel',       type: 'text' },
-    { sel: '#contact [class*="social"]',                          label: 'SocialLink',      type: 'box' },
-    { sel: '#contact [class*="card"]',                            label: 'ContactCard',     type: 'box' },
-    { sel: '#contact span',                                       label: 'ContactSpan',     type: 'text' },
-    { sel: '#contact a',                                          label: 'ContactLink',     type: 'box' },
-    // Footer
-    { sel: 'footer',                                              label: 'Footer',          type: 'box' },
-    { sel: 'footer p',                                            label: 'FooterPara',      type: 'text' },
-    { sel: 'footer a',                                            label: 'FooterLink',      type: 'box' },
-    { sel: 'footer span',                                         label: 'FooterSpan',      type: 'text' },
-    { sel: 'footer [class*="social"]',                            label: 'FooterSocial',    type: 'box' },
-    // Generic sweeps (boost layer count to 300+)
-    { sel: 'main > section > h2',                                 label: 'SectionH2',       type: 'text' },
-    { sel: 'main > section > h3',                                 label: 'SectionH3',       type: 'text' },
-    { sel: 'main > section > p',                                  label: 'SectionPara',     type: 'text' },
-    { sel: 'main > section > div > h3',                           label: 'SectionDivH3',    type: 'text' },
-    { sel: 'main > section > div > p',                            label: 'SectionDivPara',  type: 'text' },
-    { sel: '[class*="card"] h3',                                  label: 'CardH3',          type: 'text' },
-    { sel: '[class*="card"] p',                                   label: 'CardPara',        type: 'text' },
-    { sel: '[class*="card"] > div',                               label: 'CardDiv',         type: 'box' },
-    { sel: '[class*="card"] span',                                label: 'CardSpanG',       type: 'text' },
-    { sel: '[class*="badge"]',                                    label: 'BadgeEl',         type: 'box' },
-    { sel: '[class*="tag"]',                                      label: 'TagEl',           type: 'box' },
-    { sel: '[class*="pill"]',                                     label: 'PillEl',          type: 'box' },
-    { sel: '[class*="btn"]:not(#agent-replay-dock *)',             label: 'BtnEl',           type: 'box' },
-    { sel: '[class*="separator"]',                                label: 'Separator',       type: 'box' },
-    { sel: '[class*="divider"]',                                  label: 'Divider',         type: 'box' },
-    { sel: '[class*="grid"] > *',                                 label: 'GridCell',        type: 'box' },
-    { sel: '[class*="flex"] > a',                                 label: 'FlexLink',        type: 'box' },
-    { sel: '[class*="rounded"] > span',                           label: 'RoundedSpan',     type: 'text' },
-    { sel: 'main [class*="border"]',                              label: 'BorderEl',        type: 'box' },
-    { sel: 'main [class*="shadow"]',                              label: 'ShadowEl',        type: 'box' },
-    { sel: 'main [class*="ring"]',                                label: 'RingEl',          type: 'box' },
-    { sel: 'main [class*="icon"]',                                label: 'IconEl',          type: 'box' },
-    { sel: 'main [class*="label"]',                               label: 'LabelEl',         type: 'text' },
-    { sel: 'main svg',                                            label: 'SvgEl',           type: 'box' },
-    { sel: 'main [data-aos]',                                     label: 'AosEl',           type: 'box' },
-    { sel: 'main [class*="text-"]',                               label: 'TextColorEl',     type: 'text' },
-    { sel: 'main [class*="bg-"]',                                 label: 'BgEl',            type: 'box' },
-    { sel: 'main [class*="p-"]',                                  label: 'PaddedEl',        type: 'box' },
-    { sel: 'main section',                                        label: 'AnySection',      type: 'box' },
-    { sel: 'main section > div',                                  label: 'SectionDiv',      type: 'box' },
-    { sel: 'main section > div > div',                            label: 'SectionDivDiv',   type: 'box' },
-    { sel: 'main ul > li',                                        label: 'ListItem',        type: 'box' },
-    { sel: 'main ol > li',                                        label: 'OlItem',          type: 'box' },
-    { sel: 'main figure',                                         label: 'Figure',          type: 'box' },
-    { sel: 'main figcaption',                                     label: 'FigCaption',      type: 'text' },
-    { sel: 'main blockquote',                                     label: 'Blockquote',      type: 'box' },
-    { sel: 'main strong',                                         label: 'StrongEl',        type: 'text' },
-    { sel: 'main em',                                             label: 'EmEl',            type: 'text' },
-    { sel: 'main code',                                           label: 'CodeEl',          type: 'text' },
-    { sel: 'main pre',                                            label: 'PreEl',           type: 'box' },
-    { sel: 'main table',                                          label: 'TableEl',         type: 'box' },
-    { sel: 'main th',                                             label: 'ThEl',            type: 'text' },
-    { sel: 'main td',                                             label: 'TdEl',            type: 'text' },
-    { sel: 'main tr',                                             label: 'TrEl',            type: 'box' },
-    { sel: 'main details',                                        label: 'DetailsEl',       type: 'box' },
-    { sel: 'main summary',                                        label: 'SummaryEl',       type: 'text' },
+    { sel: 'header',                                              label: 'HeaderBar',        type: 'box' },
+    { sel: 'header a.group',                                      label: 'BrandLogo',        type: 'box' },
+    { sel: 'header nav a',                                        label: 'NavLink',          type: 'text' },
+    { sel: 'header .hidden.md\\:flex > a',                        label: 'HeaderBtn',        type: 'box' },
+    { sel: 'header .hidden.md\\:flex',                            label: 'HeaderActions',    type: 'box' },
+    { sel: '#hero',                                               label: 'HeroSection',      type: 'box' },
+    { sel: '#hero .inline-flex.rounded-full',                     label: 'StudentBadge',     type: 'box' },
+    { sel: '#hero .font-handwriting',                             label: 'Greeting',         type: 'text' },
+    { sel: '#hero h1',                                            label: 'HeroTitle',        type: 'text' },
+    { sel: '#hero h2',                                            label: 'RoleTitle',        type: 'text' },
+    { sel: '#hero p.text-gray-300',                               label: 'HeroBio',          type: 'box' },
+    { sel: '#hero .font-display.font-black.tracking-tighter',     label: 'PortfolioBg',      type: 'box' },
+    { sel: '#hero img[alt*="Tr"]',                                label: 'PortraitCutout',   type: 'box' },
+    { sel: '#hero a[href="#works"]',                              label: 'PrimaryCTA',       type: 'box' },
+    { sel: '#hero a[href*="github.com"]',                         label: 'GitHubCTA',        type: 'box' },
+    { sel: '#hero .flex.flex-wrap.items-center.gap-5',            label: 'QuickContact',     type: 'box' },
+    { sel: '#hero .flex.flex-wrap.items-center.gap-5 > *',        label: 'ContactItem',      type: 'box' },
+    { sel: '#hero .md\\:col-span-2 > a',                          label: 'HeroStat',         type: 'box' },
+    { sel: '#hero .grid > *',                                     label: 'HeroGridCell',     type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\]',                          label: 'BentoSection',     type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] h2',                       label: 'BentoHeading',     type: 'text' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-6',         label: 'BentoCard',        type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-7',         label: 'TechMatrix',       type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] .lg\\:col-span-5',         label: 'StudioClock',      type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] [class*="col-span"]',      label: 'BentoCell',        type: 'box' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] p',                        label: 'BentoPara',        type: 'text' },
+    { sel: 'section.bg-\\[\\#0b0c10\\] button',                   label: 'BentoBtn',         type: 'box' },
+    { sel: '#works',                                              label: 'WorksSection',     type: 'box' },
+    { sel: '#works h2',                                           label: 'WorksTitle',       type: 'text' },
+    { sel: '#project-filters',                                    label: 'FilterBar',        type: 'box' },
+    { sel: '#project-filters button',                             label: 'FilterTab',        type: 'box' },
+    { sel: '#projects-grid',                                      label: 'ProjectsGrid',     type: 'box' },
+    { sel: '#projects-grid .project-card',                        label: 'ProjectCard',      type: 'box' },
+    { sel: '#projects-grid .project-card h3',                     label: 'CardTitle',        type: 'text' },
+    { sel: '#projects-grid .project-card p',                      label: 'CardDesc',         type: 'text' },
+    { sel: '#projects-grid .project-card a',                      label: 'CardLink',         type: 'box' },
+    { sel: '#projects-grid .project-card [class*="tag"]',         label: 'CardTag',          type: 'box' },
+    { sel: '#projects-grid .project-card img',                    label: 'CardImg',          type: 'box' },
+    { sel: '#projects-grid .project-card footer',                 label: 'CardFooter',       type: 'box' },
+    { sel: '#services',                                           label: 'ServicesSection',  type: 'box' },
+    { sel: '#services h2',                                        label: 'ServicesTitle',    type: 'text' },
+    { sel: '#services .accordion-item',                           label: 'TechAccordion',    type: 'box' },
+    { sel: '#services .accordion-item h3',                        label: 'AccordionTitle',   type: 'text' },
+    { sel: '#services .accordion-item p',                         label: 'AccordionBody',    type: 'text' },
+    { sel: '#services [class*="badge"]',                          label: 'SkillBadge',       type: 'box' },
+    { sel: '#services button',                                    label: 'AccordionBtn',     type: 'box' },
+    { sel: '#docs',                                               label: 'DocsSection',      type: 'box' },
+    { sel: '#docs h2',                                            label: 'DocsTitle',        type: 'text' },
+    { sel: '#docs .space-y-4 > div',                              label: 'ArchitectureDoc',  type: 'box' },
+    { sel: '#docs .space-y-4 > div h3',                           label: 'DocTitle',         type: 'text' },
+    { sel: '#docs .space-y-4 > div p',                            label: 'DocPara',          type: 'text' },
+    { sel: '#docs .space-y-4 > div a',                            label: 'DocLink',          type: 'box' },
+    { sel: '#about',                                              label: 'AboutSection',     type: 'box' },
+    { sel: '#about h2',                                           label: 'AboutTitle',       type: 'text' },
+    { sel: '#about .lg\\:col-span-6',                             label: 'AboutColumn',      type: 'box' },
+    { sel: '#about .lg\\:col-span-6 > *',                         label: 'AboutChild',       type: 'box' },
+    { sel: '#about p',                                            label: 'AboutPara',        type: 'text' },
+    { sel: '#about h3',                                           label: 'AboutSubtitle',    type: 'text' },
+    { sel: '#about li',                                           label: 'AboutListItem',    type: 'box' },
+    { sel: '#journey',                                            label: 'JourneySection',   type: 'box' },
+    { sel: '#journey h2',                                         label: 'JourneyTitle',     type: 'text' },
+    { sel: '#journey .space-y-6 > div',                           label: 'TimelineItem',     type: 'box' },
+    { sel: '#journey .space-y-6 > div h3',                        label: 'TimelineTitle',    type: 'text' },
+    { sel: '#journey .space-y-6 > div p',                         label: 'TimelinePara',     type: 'text' },
+    { sel: '#journey .space-y-6 > div [class*="badge"]',          label: 'TimelineBadge',    type: 'box' },
+    { sel: '#journey .space-y-6 > div a',                         label: 'TimelineLink',     type: 'box' },
+    { sel: '#journey .bg-\\[\\#f5f6f8\\]',                        label: 'ResumeCard',       type: 'box' },
+    { sel: '#contact',                                            label: 'ContactSection',   type: 'box' },
+    { sel: '#contact h2',                                         label: 'ContactTitle',     type: 'text' },
+    { sel: '#contact p',                                          label: 'ContactPara',      type: 'text' },
+    { sel: '#contact #copy-email-btn',                            label: 'EmailCopyCard',    type: 'box' },
+    { sel: '#contact-form',                                       label: 'ContactForm',      type: 'box' },
+    { sel: '#contact-form input',                                 label: 'FormInput',        type: 'box' },
+    { sel: '#contact-form textarea',                              label: 'FormTextarea',     type: 'box' },
+    { sel: '#contact-form button[type="submit"]',                 label: 'FormSubmit',       type: 'box' },
+    { sel: 'footer',                                              label: 'Footer',           type: 'box' },
+    { sel: 'footer p',                                            label: 'FooterPara',       type: 'text' },
+    { sel: 'footer a',                                            label: 'FooterLink',       type: 'box' },
+    { sel: 'main > section > h2',                                 label: 'SectionH2',        type: 'text' },
+    { sel: 'main > section > h3',                                 label: 'SectionH3',        type: 'text' },
+    { sel: 'main > section > p',                                  label: 'SectionPara',      type: 'text' },
+    { sel: '[class*="card"] h3',                                  label: 'CardH3',           type: 'text' },
+    { sel: '[class*="card"] p',                                   label: 'CardPara',         type: 'text' },
+    { sel: '[class*="badge"]',                                    label: 'BadgeEl',          type: 'box' },
+    { sel: '[class*="tag"]',                                      label: 'TagEl',            type: 'box' },
+    { sel: '[class*="btn"]',                                      label: 'BtnEl',            type: 'box' },
+    { sel: '[class*="grid"] > *',                                 label: 'GridCell',         type: 'box' },
   ];
 
-  // ─── Global State ──────────────────────────────────────────────────────────
+  // ─── Global State ─────────────────────────────────────────────────────────
   let isReplaying     = false;
   let touringEnabled  = true;
   let soundEnabled    = false;
   let speedMultiplier = 1;
   let replayTimers    = [];
   let rafId           = null;
-  let introRafId      = null;
   let audioCtx        = null;
   let savedHTMLMap    = new Map();
   let builtCount      = 0;
 
-  // ─── Audio ─────────────────────────────────────────────────────────────────
+  // ─── Audio ───────────────────────────────────────────────────────────────
   function ensureAudio() {
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -278,18 +176,15 @@
     const seen = new Set();
     const list = [];
     LAYER_QUERY.forEach(item => {
-      let els;
-      try { els = document.querySelectorAll(item.sel); } catch(_) { return; }
-      els.forEach((el, idx) => {
+      document.querySelectorAll(item.sel).forEach((el, idx) => {
         if (!seen.has(el)) {
           seen.add(el);
           const hasComplex = el.querySelectorAll('div, svg, img').length > 0;
           const mode = (item.type === 'text' && !hasComplex) ? 'text' : 'box';
-          list.push({ el, label: idx > 0 ? `${item.label}_${idx+1}` : item.label, mode });
+          list.push({ el, label: idx > 0 ? `${item.label}_${idx + 1}` : item.label, mode });
         }
       });
     });
-    // Sort by absolute Y so sections are top-to-bottom
     list.sort((a, b) => {
       const ay = a.el.getBoundingClientRect().top + window.scrollY;
       const by = b.el.getBoundingClientRect().top + window.scrollY;
@@ -298,81 +193,79 @@
     return list;
   }
 
-  // ─── Main Init ─────────────────────────────────────────────────────────────
+  // ─── Main Init ───────────────────────────────────────────────────────────
   function initSwarmReplay() {
     const overlay = document.createElement('div');
     overlay.id = 'agent-replay-overlay';
     overlay.style.display = 'none';
     document.body.appendChild(overlay);
 
-    // ── 4 track overlays (guide lines hidden via CSS) ──────────────────────
+    // ── Create NUM_TRACKS sets of {bbox, guideH, guideV} ──────────────────
     const tracks = [];
     for (let t = 0; t < NUM_TRACKS; t++) {
       const guideH = document.createElement('div');
       guideH.className = 'agent-guide-h';
+      guideH.style.opacity = '0';
+
       const guideV = document.createElement('div');
       guideV.className = 'agent-guide-v';
+      guideV.style.opacity = '0';
+
       const bbox = document.createElement('div');
       bbox.className = 'agent-bbox';
       bbox.style.opacity = '0';
+      const tagId = `bbox-tag-${t}`;
+      const dimId = `bbox-dim-${t}`;
       bbox.innerHTML = `
-        <span class="agent-bbox-handle tl"></span><span class="agent-bbox-handle tr"></span>
-        <span class="agent-bbox-handle bl"></span><span class="agent-bbox-handle br"></span>
-        <span class="agent-bbox-tag" id="bbox-tag-${t}">Layer</span>
-        <span class="agent-bbox-dim" id="bbox-dim-${t}">0×0</span>
+        <span class="agent-bbox-handle tl"></span>
+        <span class="agent-bbox-handle tr"></span>
+        <span class="agent-bbox-handle bl"></span>
+        <span class="agent-bbox-handle br"></span>
+        <span class="agent-bbox-tag" id="${tagId}">Layer</span>
+        <span class="agent-bbox-dim" id="${dimId}">0 × 0</span>
       `;
+
       overlay.appendChild(guideH);
       overlay.appendChild(guideV);
       overlay.appendChild(bbox);
+
       tracks.push({
-        t,
-        bbox, guideH, guideV,
-        bboxTag: null, bboxDim: null,
-        currentEl: null,
-        currentRect: null,  // last known rect (screen-space, cached at build time)
+        guideH, guideV, bbox,
+        bboxTag: null, // filled after appendChild
+        bboxDim: null,
+        currentEl: null,       // element currently being worked on
+        offsets: [],           // per-agent stable offsets within currentEl rect
+        agentIndices: [],      // which agents belong to this track
       });
     }
+    // Now IDs exist in DOM
     tracks.forEach((tr, t) => {
       tr.bboxTag = document.getElementById(`bbox-tag-${t}`);
       tr.bboxDim = document.getElementById(`bbox-dim-${t}`);
     });
 
-    // ── 18 cursors ─────────────────────────────────────────────────────────
-    // Zone layout: 4 cols × 5 rows = 20 zones (use first 18).
-    // Zones cover the FULL VIEWPORT — spread is guaranteed.
-    const ZONE_COLS = 4;
-    const ZONE_ROWS = 5;
+    // ── 18 agent cursors ──────────────────────────────────────────────────
     const agents = [];
-
-    for (let i = 0; i < MAX_AGENTS; i++) {
-      const color = AGENT_COLORS[i];
+    for (let i = 0; i < AGENTS_TOTAL; i++) {
+      const color = AGENT_COLORS[i % AGENT_COLORS.length];
       const cur   = document.createElement('div');
       cur.className = 'agent-cursor';
-      cur.style.cssText = 'opacity:0;position:fixed;pointer-events:none;z-index:9999;left:0;top:0;will-change:transform;';
+      cur.style.cssText = 'opacity:0;position:fixed;pointer-events:none;z-index:9999;';
       cur.innerHTML = `${createPointerSVG(color)}<div class="agent-cursor-label" style="background:${color};">${AGENT_NAMES[i]}</div>`;
       overlay.appendChild(cur);
-
-      // Zone center (normalized 0-1 of viewport)
-      const col = i % ZONE_COLS;
-      const row = Math.floor(i / ZONE_COLS) % ZONE_ROWS;
-      const zoneNx = (col + 0.5) / ZONE_COLS;
-      const zoneNy = (row + 0.5) / ZONE_ROWS;
-
       agents.push({
-        cur, color,
-        x: 0, y: 0,         // current screen position
-        tx: 0, ty: 0,       // stable target (updated only on arrival or new element)
-        wanderSeed: Math.random() * Math.PI * 2, // phase for smooth wander
-        wanderT: 0,          // time accumulator for wander
-        zoneNx, zoneNy,
-        trackIdx: -1,
-        active: false,
-        opacity: 0,          // current rendered opacity (for smooth fade)
-        targetOpacity: 0,
+        cur,
+        x: window.innerWidth  * 0.5,
+        y: window.innerHeight * 0.5,
+        tx: 0, ty: 0,       // stable target — ONLY updated outside RAF
+        trackIdx: -1,       // -1 = no track = hidden
+        agentSlot: 0,       // which slot within the track (0,1,2)
+        wanderTimer: 0,     // ms since last wander-target pick
+        color,
       });
     }
 
-    // ── Dock ───────────────────────────────────────────────────────────────
+    // ── Dock ──────────────────────────────────────────────────────────────
     const dock = document.createElement('div');
     dock.id = 'agent-replay-dock';
     dock.innerHTML = `
@@ -383,7 +276,7 @@
         <span class="w-4 h-4 rounded-full bg-amber-500 border border-[#0d0f17]"></span>
         <span class="w-4 h-4 rounded-full bg-emerald-500 border border-[#0d0f17]"></span>
       </div>
-      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">14 agents</span>
+      <span id="replay-status-text" class="text-gray-200 whitespace-nowrap font-semibold">12 agents</span>
       <button id="replay-tour-btn" type="button" class="px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors">Touring</button>
       <button id="replay-speed-btn" type="button" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-200 border border-[#2d364d] transition-colors">1x</button>
       <button id="replay-sound-btn" type="button" class="px-2 py-0.5 rounded bg-[#1a1f2e] hover:bg-[#252c40] text-gray-400 border border-[#2d364d] transition-colors">🔇</button>
@@ -406,11 +299,11 @@
     const actionBtn   = document.getElementById('replay-action-btn');
     const minimizeBtn = document.getElementById('replay-minimize-btn');
 
-    // ── Helpers ─────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────
     function clearTimers() {
       replayTimers.forEach(t => clearTimeout(t));
       replayTimers = [];
-      if (rafId)      { cancelAnimationFrame(rafId);      rafId      = null; }
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
     }
 
@@ -422,30 +315,27 @@
       savedHTMLMap.clear();
     }
 
+    function hideTrack(tr) {
+      tr.bbox.style.opacity   = '0';
+      tr.guideH.style.opacity = '0';
+      tr.guideV.style.opacity = '0';
+      tr.currentEl = null;
+    }
+
     function stopReplay(completed = false, total = 0) {
       isReplaying = false;
       clearTimers();
       restoreAllSavedText();
-      document.querySelectorAll('.swarm-blank-layer,.swarm-wireframe-layer').forEach(el => {
-        el.classList.remove('swarm-blank-layer','swarm-wireframe-layer');
+      document.querySelectorAll('.swarm-blank-layer, .swarm-wireframe-layer').forEach(el => {
+        el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
         el.classList.add('swarm-built-layer');
       });
       overlay.style.display = 'none';
-      tracks.forEach(tr => {
-        tr.bbox.style.opacity = '0';
-        tr.currentEl = null;
-        tr.currentRect = null;
-      });
-      agents.forEach(a => {
-        a.cur.style.opacity = '0';
-        a.active = false;
-        a.trackIdx = -1;
-        a.opacity = 0;
-        a.targetOpacity = 0;
-      });
+      tracks.forEach(hideTrack);
+      agents.forEach(a => { a.cur.style.opacity = '0'; a.trackIdx = -1; });
       actionBtn.textContent = 'Replay';
-      actionBtn.classList.remove('bg-emerald-600','hover:bg-emerald-500');
-      actionBtn.classList.add('bg-brand-600','hover:bg-brand-500');
+      actionBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+      actionBtn.classList.add('bg-brand-600', 'hover:bg-brand-500');
       statusText.textContent = completed
         ? `${total} layers • done`
         : `${MIN_AGENTS} agents • Live`;
@@ -475,73 +365,20 @@
       typeTick();
     }
 
-    // ── Dynamic agent activation (14-18, varies every 30 layers) ───────────
-    // Count changes smoothly: every 30 layers built, step +1 (cycle 14→18→14…)
-    function getLiveCount() {
-      return MIN_AGENTS + (Math.floor(builtCount / 30) % (MAX_AGENTS - MIN_AGENTS + 1));
-    }
-
-    // Assign tracks to active agents, spread across all 4 tracks
-    function updateAgentActivation(liveCount) {
-      agents.forEach((a, i) => {
-        const shouldActive = i < liveCount;
-        a.targetOpacity = shouldActive ? 1 : 0;
-        if (shouldActive) {
-          if (!a.active) {
-            // Newly activated: spawn at zone center
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            a.x  = a.zoneNx * vw + (Math.random()-0.5)*40;
-            a.y  = a.zoneNy * vh + (Math.random()-0.5)*40;
-            a.tx = a.x; a.ty = a.y;
-            a.active = true;
-            a.wanderT = Math.random() * 100;
-          }
-          // Distribute agents across NUM_TRACKS: each track gets liveCount/NUM_TRACKS agents
-          a.trackIdx = Math.floor(i * NUM_TRACKS / liveCount);
-        } else {
-          a.active   = false;
-          a.trackIdx = -1;
-        }
-      });
-      statusText.textContent = `${liveCount} agents • ${builtCount}/`;
-    }
-
-    // ── Pick wandering target for an agent in its zone ──────────────────────
-    // Called when agent arrives at target. Uses zone center + small random offset.
-    // No getBoundingClientRect() — purely viewport-relative.
-    function pickWanderTarget(a) {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const zx = a.zoneNx * vw;
-      const zy = a.zoneNy * vh;
-      // Wander radius: 15% of viewport in each direction
-      const rx = vw * 0.14;
-      const ry = vh * 0.14;
-      a.tx = Math.max(10, Math.min(vw - 90, zx + (Math.random()-0.5)*2*rx));
-      a.ty = Math.max(10, Math.min(vh - 60, zy + (Math.random()-0.5)*2*ry));
-    }
-
-    // ── Compute target biased toward element (if agent has an active task) ─
-    // Called once at build time (not in RAF). Uses screen-space rect passed in.
-    function computeTaskTarget(a, rect) {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const zx = a.zoneNx * vw;
-      const zy = a.zoneNy * vh;
-      const ex = rect.left + rect.width  / 2;
-      const ey = rect.top  + rect.height / 2;
-      // 50% zone + 50% element, small jitter
-      const bx = zx * 0.5 + ex * 0.5 + (Math.random()-0.5)*50;
-      const by = zy * 0.5 + ey * 0.5 + (Math.random()-0.5)*35;
-      a.tx = Math.max(10, Math.min(vw - 90, bx));
-      a.ty = Math.max(10, Math.min(vh - 60, by));
-    }
-
-    // ── 60fps physics — ZERO getBoundingClientRect() ────────────────────────
-    // Agents move toward stable a.tx, a.ty (computed at build-time).
-    // On arrival → wander within zone (keeps every agent moving).
+    // ── 60fps physics loop — ZERO getBoundingClientRect() ─────────────────
+    // Agents move toward stable a.tx / a.ty which are computed ONCE at build
+    // time (in assignToTrack / updateTrackOverlay). NOT recalculated per frame.
+    // On arrival → agent picks a NEW free-roam target anywhere on screen.
     let lastPhysicsTime = 0;
+
+    // Pick a random target anywhere on the visible viewport (free roam)
+    function pickFreeRoamTarget(a) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      a.tx = 20 + Math.random() * (vw - 110);
+      a.ty = 20 + Math.random() * (vh - 70);
+      a.wanderTimer = 0;
+    }
 
     function physicsLoop(now) {
       if (!isReplaying) return;
@@ -550,75 +387,89 @@
       const dt = Math.min((now - lastPhysicsTime) / 1000, 0.05);
       lastPhysicsTime = now;
 
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
       agents.forEach(a => {
-        // Smooth fade in/out
-        if (a.opacity !== a.targetOpacity) {
-          const fadeSpeed = dt * 3; // fade over ~0.33s
-          if (a.targetOpacity > a.opacity) {
-            a.opacity = Math.min(a.targetOpacity, a.opacity + fadeSpeed);
-          } else {
-            a.opacity = Math.max(a.targetOpacity, a.opacity - fadeSpeed);
-          }
-          a.cur.style.opacity = a.opacity.toFixed(3);
-          if (a.opacity <= 0) { a.cur.style.opacity = '0'; return; }
-        } else if (a.targetOpacity === 0) {
+        const tIdx = a.trackIdx;
+        if (tIdx < 0) {
           a.cur.style.opacity = '0';
           return;
         }
 
+        // Target is a.tx / a.ty — set at build time, NOT recalculated here
         const dx   = a.tx - a.x;
         const dy   = a.ty - a.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < 8) {
-          // Arrived — pick new wander target within zone
+        if (dist < 6) {
+          // Arrived — pick a new free-roam target so cursor keeps wandering
           a.x = a.tx; a.y = a.ty;
-          pickWanderTarget(a);
+          pickFreeRoamTarget(a);
         } else {
-          // Fast approach → eases in final 60px (easeOut)
-          const closeEnough = 60;
+          // Ease-out approach: fast far away, smooth in final 70px
           let speed;
-          if (dist > closeEnough) {
-            speed = Math.max(700, dist * 6);
+          if (dist > 70) {
+            speed = Math.max(900, dist * 7);
           } else {
-            // Ease out: speed drops linearly from 700 to 180 over last 60px
-            const t = dist / closeEnough;
-            speed = 180 + t * (700 - 180);
+            // linear ease-out: 900→200 over last 70px
+            speed = 200 + (dist / 70) * 700;
           }
           const step = Math.min(dist, speed * dt);
           a.x += (dx / dist) * step;
           a.y += (dy / dist) * step;
         }
 
+        // Clamp to viewport
+        a.x = Math.max(10, Math.min(vw - 90, a.x));
+        a.y = Math.max(10, Math.min(vh - 60, a.y));
+
         a.cur.style.transform = `translate3d(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px,0)`;
+        a.cur.style.opacity   = '1';
       });
     }
 
-    // ── Assign track to element (called at each layer build) ────────────────
-    // ONLY place getBoundingClientRect() is called. NOT in RAF.
-    function assignTrackElement(tr, item, rect) {
-      tr.currentEl   = item.el;
-      tr.currentRect = rect;
+    // ── Update a track's bbox to a new element ────────────────────────────
+    // Called at build time only. Sets stable a.tx/a.ty for each agent on this track.
+    function updateTrackOverlay(tr, rect, label, trIdx) {
+      if (rect.width <= 0 || rect.height <= 0) return;
+      // Individual property assignment — no cssText += (avoids layout thrashing)
+      tr.bbox.style.opacity = '1';
+      tr.bbox.style.left    = `${rect.left}px`;
+      tr.bbox.style.top     = `${rect.top}px`;
+      tr.bbox.style.width   = `${rect.width}px`;
+      tr.bbox.style.height  = `${rect.height}px`;
+      tr.bboxTag.textContent = label;
+      tr.bboxDim.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
 
-      if (rect.width > 0 && rect.height > 0) {
-        tr.bbox.style.opacity = '1';
-        tr.bbox.style.left   = `${rect.left}px`;
-        tr.bbox.style.top    = `${rect.top}px`;
-        tr.bbox.style.width  = `${rect.width}px`;
-        tr.bbox.style.height = `${rect.height}px`;
-        if (tr.bboxTag) tr.bboxTag.textContent = item.label;
-        if (tr.bboxDim) tr.bboxDim.textContent = `${Math.round(rect.width)}×${Math.round(rect.height)}`;
-      }
-
-      // Update task targets for all agents assigned to this track
-      agents.forEach(a => {
-        if (a.active && a.trackIdx === tr.t) {
-          computeTaskTarget(a, rect);
-        }
+      // Set STABLE targets for agents on this track (read once, used every frame)
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      tr.agentIndices.forEach((aIdx, slot) => {
+        const a   = agents[aIdx];
+        const off = tr.offsets[slot] || { ox: 0.5, oy: 0.5 };
+        // Blend: 50% element position + 50% free position on screen → cursor is near element but not stuck in bbox
+        const ex = rect.left + off.ox * Math.max(rect.width, 10);
+        const ey = rect.top  + off.oy * Math.max(rect.height, 10);
+        // Add random viewport spread: cursor can be anywhere within ±40% of screen from element
+        const sx = ex + (Math.random()-0.5) * vw * 0.35;
+        const sy = ey + (Math.random()-0.5) * vh * 0.30;
+        a.tx = Math.max(10, Math.min(vw - 90, sx));
+        a.ty = Math.max(10, Math.min(vh - 60, sy));
       });
     }
 
-    // ── Touring scroll ──────────────────────────────────────────────────────
+    // ── Assign an element to a track (randomize stable agent offsets) ──────
+    function assignToTrack(tr, item) {
+      tr.currentEl = item.el;
+      tr.offsets = Array.from({ length: tr.agentIndices.length }, (_, slot) => ({
+        // Spread agents across the element width
+        ox: (slot + 0.5 + (Math.random() - 0.5) * 0.6) / Math.max(1, tr.agentIndices.length),
+        oy: 0.1 + Math.random() * 0.8,
+      }));
+    }
+
+    // ── Touring scroll ─────────────────────────────────────────────────────
     let scrollTarget  = 0;
     let scrollCurrent = 0;
     let scrollRafId   = null;
@@ -632,10 +483,13 @@
         if (Math.abs(diff) < 0.5) {
           scrollCurrent = scrollTarget;
           window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
-          scrollRafId = null; return;
+          scrollRafId = null;
+          return;
         }
         const d  = Math.abs(diff);
-        const px = d > 120 ? Math.sign(diff)*Math.max(60,d*0.20) : Math.sign(diff)*Math.max(3,d*0.11);
+        const px = d > 120
+          ? Math.sign(diff) * Math.max(60, d * 0.22)
+          : Math.sign(diff) * Math.max(3,  d * 0.12);
         scrollCurrent += px;
         window.scrollTo({ top: scrollCurrent, behavior: 'instant' });
         scrollRafId = requestAnimationFrame(step);
@@ -643,25 +497,40 @@
       scrollRafId = requestAnimationFrame(step);
     }
 
-    // ── 1.7s Intro ribbons ──────────────────────────────────────────────────
-    // All MAX_AGENTS visible in 2 horizontal ribbon streams.
-    // Agents wander across full viewport width + height bands.
+    function touringFollow(rect) {
+      const vh = window.innerHeight;
+      if (rect.top > vh * 0.60 || rect.bottom < 60) {
+        touringScrollTo(window.scrollY + rect.top - vh * 0.30);
+      }
+    }
+
+    // ── 1.7s Intro: ribbon streams ─────────────────────────────────────────
+    // ALL agents visible during intro. Intro uses its OWN RAF — does NOT
+    // modify a.trackIdx so it never conflicts with physicsLoop.
+    // physicsLoop is NOT started until after intro completes.
+    let introRafId = null;
+
     function runIntro(onDone) {
       overlay.style.display = 'block';
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      // Seed intro positions spread across screen
+      // Intro positions stored separately — don't touch a.x/a.y (physics uses those)
       const ipos = agents.map((a, i) => {
-        const col = i % ZONE_COLS;
-        const row = Math.floor(i / ZONE_COLS) % ZONE_ROWS;
-        const x = ((col + 0.5) / ZONE_COLS) * vw + (Math.random()-0.5)*40;
-        const y = ((row + 0.5) / ZONE_ROWS) * vh + (Math.random()-0.5)*30;
+        const stream = i < AGENTS_TOTAL / 2 ? 0 : 1;
+        const t = (i % Math.ceil(AGENTS_TOTAL / 2)) / Math.ceil(AGENTS_TOTAL / 2);
+        let x, y;
+        if (stream === 0) {
+          x = t * vw * 0.9 + 20;
+          y = 60 + Math.sin(t * Math.PI) * vh * 0.18;
+        } else {
+          x = vw - 20 - t * vw * 0.9;
+          y = vh - 80 - Math.sin(t * Math.PI) * vh * 0.18;
+        }
+        // Show all agents in intro
         a.cur.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
         a.cur.style.opacity   = '1';
-        a.opacity = 1;
-        a.targetOpacity = 1;
-        return { x, y, vx: (Math.random()-0.5)*1.2, vy: (Math.random()-0.5)*0.8 };
+        return { x, y };
       });
 
       let introStart = null;
@@ -670,29 +539,43 @@
         if (!introStart) introStart = now;
         const elapsed = now - introStart;
         const frac    = Math.min(elapsed / INTRO_DUR, 1);
-        const cvw = window.innerWidth;
-        const cvh = window.innerHeight;
+        const vw2 = window.innerWidth;
+        const vh2 = window.innerHeight;
 
         agents.forEach((a, i) => {
-          const ip = ipos[i];
-          // Gentle drift during intro
-          ip.x += ip.vx;
-          ip.y += ip.vy;
-          // Bounce off edges
-          if (ip.x < 10)       { ip.x = 10;       ip.vx =  Math.abs(ip.vx); }
-          if (ip.x > cvw - 90) { ip.x = cvw - 90; ip.vx = -Math.abs(ip.vx); }
-          if (ip.y < 10)       { ip.y = 10;        ip.vy =  Math.abs(ip.vy); }
-          if (ip.y > cvh - 60) { ip.y = cvh - 60;  ip.vy = -Math.abs(ip.vy); }
-          a.cur.style.transform = `translate3d(${ip.x.toFixed(1)}px,${ip.y.toFixed(1)}px,0)`;
+          const stream = i < Math.ceil(AGENTS_TOTAL / 2) ? 0 : 1;
+          const baseT  = (i % Math.ceil(AGENTS_TOTAL / 2)) / Math.ceil(AGENTS_TOTAL / 2);
+          const t      = (baseT + frac * 0.5) % 1;
+          const wave   = Math.sin((t + frac) * Math.PI * 2) * 35;
+
+          let nx, ny;
+          if (stream === 0) {
+            nx = 20 + t * vw2 * 0.9;
+            ny = 55 + wave + frac * vh2 * 0.09;
+          } else {
+            nx = vw2 - 20 - t * vw2 * 0.9;
+            ny = vh2 - 80 - wave - frac * vh2 * 0.09;
+          }
+
+          // Smooth move toward ribbon target
+          const dx = nx - ipos[i].x;
+          const dy = ny - ipos[i].y;
+          const d  = Math.sqrt(dx * dx + dy * dy);
+          if (d > 1) {
+            const spd = Math.min(d, Math.max(380, d * 5) / 60);
+            ipos[i].x += (dx / d) * spd;
+            ipos[i].y += (dy / d) * spd;
+          } else {
+            ipos[i].x = nx; ipos[i].y = ny;
+          }
+          a.cur.style.transform = `translate3d(${ipos[i].x.toFixed(1)}px,${ipos[i].y.toFixed(1)}px,0)`;
+          a.cur.style.opacity   = '1';
         });
 
         if (elapsed >= INTRO_DUR) {
           introRafId = null;
-          // Seed physics positions from final intro positions
-          agents.forEach((a, i) => {
-            a.x = ipos[i].x; a.y = ipos[i].y;
-            a.tx = a.x; a.ty = a.y;
-          });
+          // Seed a.x/a.y from final intro positions so physics starts smoothly
+          agents.forEach((a, i) => { a.x = ipos[i].x; a.y = ipos[i].y; });
           onDone();
           return;
         }
@@ -701,96 +584,134 @@
       introRafId = requestAnimationFrame(introFrame);
     }
 
-    // ── Main Replay ─────────────────────────────────────────────────────────
+    // ── Main Replay ────────────────────────────────────────────────────────
     function startReplay() {
-      if (isReplaying) { isReplaying=false; clearTimers(); restoreAllSavedText(); }
-      if (introRafId)  { cancelAnimationFrame(introRafId); introRafId=null; }
+      if (isReplaying) {
+        isReplaying = false;
+        clearTimers();
+        restoreAllSavedText();
+      }
+      // Cancel any in-progress intro RAF
+      if (introRafId) { cancelAnimationFrame(introRafId); introRafId = null; }
 
       isReplaying = true;
       builtCount  = 0;
 
       document.documentElement.style.scrollBehavior = 'auto';
-      window.scrollTo({ top:0, behavior:'instant' });
+      window.scrollTo({ top: 0, behavior: 'instant' });
       scrollCurrent = 0; scrollTarget = 0;
 
       const layers = collectLayers();
       const total  = layers.length;
 
+      // Blank canvas
       layers.forEach(item => {
-        item.el.classList.remove('swarm-built-layer','swarm-wireframe-layer');
+        item.el.classList.remove('swarm-built-layer', 'swarm-wireframe-layer');
         item.el.classList.add('swarm-blank-layer');
       });
 
       overlay.style.display = 'block';
       actionBtn.textContent = 'Go Live';
-      actionBtn.classList.remove('bg-brand-600','hover:bg-brand-500');
-      actionBtn.classList.add('bg-emerald-600','hover:bg-emerald-500');
+      actionBtn.classList.remove('bg-brand-600', 'hover:bg-brand-500');
+      actionBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
       statusText.textContent = `${MIN_AGENTS} agents • 0/${total}`;
 
-      // All agents hidden at start (intro will show them)
-      agents.forEach(a => {
-        a.active = false;
-        a.trackIdx = -1;
-        a.opacity = 0;
-        a.targetOpacity = 0;
-        a.cur.style.opacity = '0';
-      });
-      tracks.forEach(tr => { tr.currentEl=null; tr.currentRect=null; tr.bbox.style.opacity='0'; });
+      // ── Dynamic agent activation: start with MIN_AGENTS ─────────────────
+      let liveCount = MIN_AGENTS;
 
-      // Run intro then start building
+      function getLiveCount() {
+        return MIN_AGENTS + (Math.floor(builtCount / 35) % (MAX_AGENTS - MIN_AGENTS + 1));
+      }
+
+      function activateAgents(count) {
+        // Assign count agents across NUM_TRACKS (count/4 per track)
+        const perTrack = Math.ceil(count / NUM_TRACKS);
+        tracks.forEach((tr, t) => {
+          tr.agentIndices = [];
+          tr.currentEl = null;
+          hideTrack(tr);
+        });
+        let assigned = 0;
+        for (let t = 0; t < NUM_TRACKS && assigned < count; t++) {
+          for (let s = 0; s < perTrack && assigned < count; s++) {
+            const aIdx = t * perTrack + s;
+            if (aIdx < AGENTS_TOTAL) {
+              agents[aIdx].trackIdx  = t;
+              agents[aIdx].agentSlot = s;
+              tracks[t].agentIndices.push(aIdx);
+              assigned++;
+            }
+          }
+        }
+        // Hide unused agents
+        for (let i = count; i < AGENTS_TOTAL; i++) {
+          agents[i].trackIdx = -1;
+          agents[i].cur.style.opacity = '0';
+        }
+        // Seed free-roam targets for newly active agents
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        for (let i = 0; i < count; i++) {
+          const a = agents[i];
+          if (a.tx === 0 && a.ty === 0) {
+            a.tx = 20 + Math.random() * (vw - 110);
+            a.ty = 20 + Math.random() * (vh - 70);
+          }
+        }
+      }
+
+      activateAgents(liveCount);
+
       runIntro(() => {
         if (!isReplaying) return;
 
-        // Activate initial liveCount agents
-        updateAgentActivation(getLiveCount());
+        // Hide agents beyond liveCount (intro showed all)
+        for (let i = liveCount; i < AGENTS_TOTAL; i++) {
+          agents[i].cur.style.opacity = '0';
+        }
 
-        // Start physics loop AFTER intro completes
+        // Now start physics loop
         lastPhysicsTime = performance.now();
         rafId = requestAnimationFrame(physicsLoop);
 
         // ── Section-based layer split ──────────────────────────────────────
-        // Track 0 = top 25% of layers (top of page)
-        // Track 1 = next 25%, Track 2 = next 25%, Track 3 = bottom 25%
+        // Track 0 = top 25% of page, Track 1 = 25-50%, etc.
         // → agents of different tracks work at DIFFERENT Y positions → full spread
         const chunkSize = Math.ceil(total / NUM_TRACKS);
         const trackLayers = tracks.map((_, t) =>
-          layers.slice(t * chunkSize, (t+1) * chunkSize)
+          layers.slice(t * chunkSize, (t + 1) * chunkSize)
         );
 
-        const BASE_MS = 280; // ms per layer at 1x
+        const baseInterval = 280; // ms per layer at 1x
 
         tracks.forEach((tr, t) => {
           if (trackLayers[t].length === 0) return;
 
-          // Stagger start: each track begins 80ms after previous
-          const startOffset = t * Math.round(80 / speedMultiplier);
+          const startOffset = t * Math.round(50 / speedMultiplier);
           let delay = startOffset;
 
-          trackLayers[t].forEach((item) => {
-            const stepMs = Math.max(55, Math.round(BASE_MS / speedMultiplier));
+          trackLayers[t].forEach(item => {
+            const stepDelay = Math.max(60, Math.round(baseInterval / speedMultiplier));
 
-            // Phase A: wireframe (slightly before build)
+            // Phase A: wireframe flash
             replayTimers.push(setTimeout(() => {
               if (!isReplaying) return;
               item.el.classList.remove('swarm-blank-layer');
               item.el.classList.add('swarm-wireframe-layer');
               playWireframeSound();
-            }, Math.max(0, delay - Math.round(100/speedMultiplier))));
+            }, Math.max(0, delay - Math.round(90 / speedMultiplier))));
 
-            // Phase B: build
+            // Phase B: build — set stable targets for agents on this track
             replayTimers.push(setTimeout(() => {
               if (!isReplaying) return;
 
               const rect = item.el.getBoundingClientRect();
 
-              // Touring: follow track 1 (middle section = best viewing window)
-              if (touringEnabled && t === 1) {
-                if (rect.top > window.innerHeight * 0.65 || rect.bottom < 60) {
-                  touringScrollTo(window.scrollY + rect.top - window.innerHeight * 0.35);
-                }
-              }
+              // Touring — driven by track 1 (middle section = best view)
+              if (touringEnabled && t === 1) touringFollow(rect);
 
-              assignTrackElement(tr, item, rect);
+              assignToTrack(tr, item);
+              updateTrackOverlay(tr, rect, item.label, t);
 
               item.el.classList.remove('swarm-wireframe-layer');
               item.el.classList.add('swarm-built-layer');
@@ -800,11 +721,13 @@
 
               builtCount++;
 
-              // Vary agent count every 30 layers (14 → 15 → 16 → 17 → 18 → 14 …)
-              if (builtCount % 30 === 0) {
-                updateAgentActivation(getLiveCount());
+              // Vary agent count every 35 layers (14→15→16→17→18→14…)
+              const newLive = getLiveCount();
+              if (newLive !== liveCount) {
+                liveCount = newLive;
+                activateAgents(liveCount);
               }
-              statusText.textContent = `${getLiveCount()} agents • ${builtCount}/${total}`;
+              statusText.textContent = `${liveCount} agents • ${builtCount}/${total}`;
 
               if (builtCount >= total) {
                 replayTimers.push(setTimeout(() => stopReplay(true, total),
@@ -812,28 +735,32 @@
               }
             }, delay));
 
-            delay += stepMs;
+            delay += stepDelay;
           });
         });
       });
     }
 
-    // ── Button Events ───────────────────────────────────────────────────────
+    // ── Button Events ──────────────────────────────────────────────────────
     actionBtn.addEventListener('click', () => {
       ensureAudio();
-      if (isReplaying) stopReplay(false); else startReplay();
+      if (isReplaying) stopReplay(false);
+      else startReplay();
     });
+
     tourBtn.addEventListener('click', () => {
       touringEnabled = !touringEnabled;
       tourBtn.className = touringEnabled
         ? 'px-2.5 py-0.5 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/50 hover:bg-brand-600/50 transition-colors'
         : 'px-2.5 py-0.5 rounded-full bg-[#1a1f2e] text-gray-500 border border-[#2d364d] hover:text-gray-300 transition-colors';
     });
+
     speedBtn.addEventListener('click', () => {
-      speedMultiplier = speedMultiplier===1?2:speedMultiplier===2?3:1;
+      speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 3 : 1;
       speedBtn.textContent = `${speedMultiplier}x`;
       if (isReplaying) startReplay();
     });
+
     soundBtn.addEventListener('click', () => {
       soundEnabled = !soundEnabled;
       if (soundEnabled) ensureAudio();
@@ -841,18 +768,22 @@
       soundBtn.classList.toggle('text-brand-400', soundEnabled);
       soundBtn.classList.toggle('border-brand-500', soundEnabled);
     });
+
     minimizeBtn.addEventListener('click', () => {
       if (isReplaying) stopReplay(false);
-      dock.style.display='none';
-      miniPill.classList.remove('hidden'); miniPill.classList.add('flex');
+      dock.style.display = 'none';
+      miniPill.classList.remove('hidden');
+      miniPill.classList.add('flex');
     });
+
     miniPill.addEventListener('click', () => {
-      miniPill.classList.add('hidden'); miniPill.classList.remove('flex');
-      dock.style.display='flex';
+      miniPill.classList.add('hidden');
+      miniPill.classList.remove('flex');
+      dock.style.display = 'flex';
       startReplay();
     });
 
-    // Auto-start after brief delay
+    // Auto-start
     setTimeout(() => { startReplay(); }, 300);
   }
 

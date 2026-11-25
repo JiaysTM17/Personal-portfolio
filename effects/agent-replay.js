@@ -727,8 +727,13 @@
           ip.y = ny;
 
           if (frac >= 0.62) {
-            // Level arrows cleanly while holding 'K'
-            const diff = ((0 - a.angle + 540) % 360) - 180;
+            // Each agent stays on its 'K' spot and looks around independently (up/down/left/right)
+            const holdT    = (frac - 0.62) / 0.38;
+            const dirSign  = i % 2 === 0 ? 1 : -1;
+            const baseLook = ((i * 137.5) % 360) - 180;
+            const swing    = Math.sin(holdT * Math.PI * (1.8 + (i % 4) * 0.45) + i) * (75 + (i % 3) * 35);
+            const lookDeg  = baseLook + dirSign * swing;
+            const diff     = ((lookDeg - a.angle + 540) % 360) - 180;
             a.angle += diff * Math.min(1, dt * 8);
             if (a.arrowEl) a.arrowEl.style.transform = `rotate(${a.angle.toFixed(1)}deg)`;
           } else {

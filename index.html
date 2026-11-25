@@ -242,6 +242,86 @@
 
     </section>
 
+    <!-- BENTO SNAPSHOT & LIVE STUDIO CLOCK (Inspired by modern developer portfolios) -->
+    <section class="py-12 border-b border-[#1f242e]/40 bg-[#0b0c10] relative">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Bento Card 1: Narrative & What I Build (5 cols) -->
+          <div class="lg:col-span-5 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 flex flex-col justify-between space-y-4 transition-colors">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-[11px] font-mono uppercase tracking-widest text-brand-400">01 // WHAT I BUILD</span>
+                <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+              </div>
+              <h3 class="text-lg font-display font-bold uppercase tracking-wide text-white">
+                TỪ Ý TƯỞNG ĐẾN HỆ THỐNG PRODUCTION
+              </h3>
+              <p class="text-xs sm:text-sm text-gray-400 mt-2 leading-relaxed font-light">
+                Xây dựng hệ thống Backend phân tầng với <strong class="text-gray-200">Java Spring Boot 3</strong> & <strong class="text-gray-200">PostgreSQL</strong>, ứng dụng Fullstack <strong class="text-gray-200">React / Node.js</strong>, quy trình kiểm thử tự động hàng nghìn test cases và tích hợp <strong class="text-gray-200">Gemini AI</strong>.
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-[#1f242e]">
+              <a href="#journey" class="text-xs font-mono text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors">
+                <span>Đọc hành trình của tôi</span>
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+              </a>
+              <span class="text-gray-700">•</span>
+              <button type="button" onclick="document.getElementById('download-cv-btn').click()" class="text-xs font-mono text-gray-300 hover:text-white flex items-center gap-1 transition-colors">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-brand-400"></i>
+                <span>Xem CV</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Bento Card 2: Tech Stack Matrix (4 cols) -->
+          <div class="lg:col-span-4 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 flex flex-col justify-between space-y-4 transition-colors">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-[11px] font-mono uppercase tracking-widest text-brand-400">02 // CORE TECH STACK</span>
+                <i data-lucide="cpu" class="w-4 h-4 text-gray-500"></i>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <span class="text-xs font-mono bg-[#181c28] text-amber-300 border border-amber-800/40 px-2.5 py-1 rounded-lg">Java 21</span>
+                <span class="text-xs font-mono bg-[#181c28] text-emerald-300 border border-emerald-800/40 px-2.5 py-1 rounded-lg">Spring Boot 3</span>
+                <span class="text-xs font-mono bg-[#181c28] text-sky-300 border border-sky-800/40 px-2.5 py-1 rounded-lg">React.js</span>
+                <span class="text-xs font-mono bg-[#181c28] text-green-300 border border-green-800/40 px-2.5 py-1 rounded-lg">Node.js</span>
+                <span class="text-xs font-mono bg-[#181c28] text-indigo-300 border border-indigo-800/40 px-2.5 py-1 rounded-lg">PostgreSQL</span>
+                <span class="text-xs font-mono bg-[#181c28] text-emerald-400 border border-emerald-800/40 px-2.5 py-1 rounded-lg">MongoDB</span>
+                <span class="text-xs font-mono bg-[#181c28] text-cyan-300 border border-cyan-800/40 px-2.5 py-1 rounded-lg">Tailwind CSS</span>
+                <span class="text-xs font-mono bg-[#181c28] text-blue-300 border border-blue-800/40 px-2.5 py-1 rounded-lg">Docker</span>
+                <span class="text-xs font-mono bg-[#181c28] text-purple-300 border border-purple-800/40 px-2.5 py-1 rounded-lg">Gemini API</span>
+                <span class="text-xs font-mono bg-[#181c28] text-gray-300 border border-gray-700 px-2.5 py-1 rounded-lg">Git & CI/CD</span>
+              </div>
+            </div>
+            <p class="text-[11px] font-mono text-gray-500 pt-2 border-t border-[#1f242e]">
+              100% áp dụng thực tế trong các dự án trên GitHub
+            </p>
+          </div>
+
+          <!-- Bento Card 3: Live Studio Clock (3 cols) -->
+          <div class="lg:col-span-3 bg-[#12141a] border border-[#1f242e] hover:border-brand-600/40 rounded-2xl p-6 flex flex-col justify-between text-center transition-colors">
+            <div class="flex items-center justify-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span class="text-[11px] font-mono uppercase tracking-widest text-gray-400">03 // STUDIO CLOCK</span>
+            </div>
+            <div class="my-3">
+              <div id="studio-clock-time" class="text-3xl sm:text-4xl font-mono font-bold text-white tracking-wider">
+                00:00:00
+              </div>
+              <div id="studio-clock-date" class="text-xs font-mono text-brand-400 mt-1">
+                TP. Hồ Chí Minh (GMT+7)
+              </div>
+            </div>
+            <div class="text-[11px] font-mono text-gray-500 pt-2 border-t border-[#1f242e]">
+              Saigon, Vietnam • HCMUTE
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
     <!-- SECTION 01: SELECTED WORK / DỰ ÁN TIÊU BIỂU -->
     <section id="works" class="py-20 md:py-28 border-b border-[#1f242e]/40 relative">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

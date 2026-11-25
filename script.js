@@ -6,6 +6,33 @@ document.addEventListener('DOMContentLoaded', () => {
     window.lucide.createIcons();
   }
 
+  // 1.5 Live Studio Clock (Saigon Time GMT+7)
+  const clockTimeEl = document.getElementById('studio-clock-time');
+  const clockDateEl = document.getElementById('studio-clock-date');
+  if (clockTimeEl && clockDateEl) {
+    const updateClock = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      const dateStr = now.toLocaleDateString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      clockTimeEl.textContent = timeStr;
+      clockDateEl.textContent = dateStr;
+    };
+    updateClock();
+    setInterval(updateClock, 1000);
+  }
+
   // 2. Mobile Menu Toggle
   const mobileMenuBtn = document.getElementById('mobile-menu-btn');
   const mobileMenu = document.getElementById('mobile-menu');

@@ -171,6 +171,7 @@
         seen.add(el);
         const hasComplexChildren = el.querySelectorAll('div, svg, img').length > 0;
         const mode = (item.type === 'text' && !hasComplexChildren) ? 'text' : 'box';
+        const isImg = el.tagName === 'IMG' || el.querySelector('img') !== null;
         const text = (el.innerText || '').trim();
         list.push({
           el,
@@ -178,6 +179,8 @@
           absLeft: rect.left + (window.scrollX || 0),
           label: idx > 0 ? `${item.label}_${idx + 1}` : item.label,
           mode,
+          isImg,
+          fullText: text,
           textLen: text.length,
           claimed: false,
           built: false
@@ -306,7 +309,13 @@
 
       document.querySelectorAll('.swarm-blank-layer, .swarm-wireframe-layer').forEach(el => {
         el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
+        el.style.clipPath = '';
+        el.style.opacity = '';
         el.classList.add('swarm-built-layer');
+      });
+      document.querySelectorAll('.swarm-built-layer').forEach(el => {
+        el.style.clipPath = '';
+        el.style.opacity = '';
       });
 
       agents.forEach(hideAgent);
@@ -357,6 +366,11 @@
 
     function findNextTask(layers, agent) {
       const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      // Preferred screen zone per agent so 14-18 cursors spread across the whole viewport
+      const zoneX = (((agent.id % 6) + 0.5) / 6) * vw;
+      const zoneY = ((Math.floor(agent.id / 6) + 0.5) / 3) * vh;
+
       let best = null;
       let bestScore = Infinity;
 
@@ -364,11 +378,12 @@
         const l = layers[i];
         if (l.claimed || l.built) continue;
         const r = l.el.getBoundingClientRect();
-        if (r.bottom < -60 || r.top > vh + 140) continue;
+        // Strictly inside visible viewport (never claim off-screen bottom edge!)
+        if (r.bottom < 10 || r.top > vh - 36) continue;
 
-        // Prioritize top-to-bottom progression + proximity to this agent
-        const dist = Math.hypot(r.left - agent.x, r.top - agent.y);
-        const score = Math.max(0, r.top) * 1.3 + dist * 0.35;
+        const zoneDist = Math.hypot(r.left - zoneX, r.top - zoneY);
+        const agentDist = Math.hypot(r.left - agent.x, r.top - agent.y);
+        const score = zoneDist * 0.65 + agentDist * 0.35 + Math.max(0, r.top) * 0.2;
         if (score < bestScore) {
           bestScore = score;
           best = l;
@@ -395,6 +410,8 @@
       layers.forEach(item => {
         if (item.absTop < heroCutoffY) heroTotal++;
         item.el.classList.remove('swarm-built-layer', 'swarm-wireframe-layer');
+        item.el.style.clipPath = '';
+        item.el.style.opacity = '';
         item.el.classList.add('swarm-blank-layer');
       });
 
@@ -438,8 +455,8 @@
           const l = layers[i];
           if (l.built) continue;
           const r = l.el.getBoundingClientRect();
-          if (r.top < leadTop && r.bottom >= -40) leadTop = r.top;
-          if (r.bottom >= -40 && r.top <= vh + 100) {
+          if (r.top < leadTop && r.bottom >= 10) leadTop = r.top;
+          if (r.bottom >= 10 && r.top <= vh - 36) {
             unbuiltVisible++;
             if (!l.claimed) unclaimedVisible++;
           }
@@ -477,13 +494,24 @@
                 a.y = ty;
                 a.state = 'work';
                 a.workTime = 0;
+                a.lastCharCount = 0;
                 a.workDur = a.task.mode === 'text'
                   ? clamp(0.45 + a.task.textLen * 0.005, 0.48, 0.78)
                   : clamp(0.38 + Math.min(0.22, (rect.width * rect.height) / 360000), 0.40, 0.68);
 
-                a.task.el.classList.remove('swarm-blank-layer');
-                a.task.el.classList.add('swarm-wireframe-layer');
-                playWireframeSound();
+                a.task.el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
+                a.task.el.classList.add('swarm-built-layer');
+
+                if (a.task.mode === 'text' && a.task.fullText) {
+                  if (!savedHTMLMap.has(a.task.el)) {
+                    savedHTMLMap.set(a.task.el, a.task.el.innerHTML);
+                  }
+                  a.task.el.textContent = '';
+                  a.task.el.classList.add('swarm-typing-caret');
+                } else {
+                  a.task.el.style.clipPath = 'inset(0 100% 100% 0)';
+                  playWireframeSound();
+                }
               } else {
                 const step = Math.min(dist, 820 * dt);
                 a.x += (dx / dist) * step;
@@ -508,23 +536,42 @@
               a.bbox.style.height = `${curH}px`;
               a.dimEl.textContent = `${Math.round(curW)} × ${Math.round(curH)}`;
 
+              // Live progressive reveal DURING work (typing text / wiping images / stretching frames)
+              if (a.task.mode === 'text' && a.task.fullText) {
+                const chars = Math.max(1, Math.ceil(a.task.fullText.length * p));
+                if (chars > a.lastCharCount) {
+                  a.lastCharCount = chars;
+                  a.task.el.textContent = a.task.fullText.slice(0, chars);
+                  if (chars % 3 === 0) playTypeSound();
+                }
+              } else if (a.task.isImg) {
+                const bottomInset = Math.max(0, 100 - e * 100).toFixed(1);
+                a.task.el.style.clipPath = `inset(0 0 ${bottomInset}% 0)`;
+                a.task.el.style.opacity = `${(0.25 + 0.75 * e).toFixed(2)}`;
+              } else {
+                const insetPct = Math.max(0, 100 - e * 100).toFixed(1);
+                a.task.el.style.clipPath = `inset(0 ${insetPct}% ${insetPct}% 0)`;
+              }
+
               a.x = clamp(rect.left + curW, 8, vw - 40);
               a.y = clamp(rect.top + curH, 8, vh - 30);
               a.cur.style.opacity = '1';
               a.cur.style.transform = `translate3d(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px, 0)`;
 
               if (p >= 1) {
-                a.task.el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer');
+                a.task.el.classList.remove('swarm-blank-layer', 'swarm-wireframe-layer', 'swarm-typing-caret');
+                a.task.el.style.clipPath = '';
+                a.task.el.style.opacity = '';
+                if (savedHTMLMap.has(a.task.el)) {
+                  a.task.el.innerHTML = savedHTMLMap.get(a.task.el);
+                  savedHTMLMap.delete(a.task.el);
+                }
                 a.task.el.classList.add('swarm-built-layer');
                 a.task.built = true;
                 builtCount++;
                 if (a.task.absTop < heroCutoffY) heroBuilt++;
 
-                if (a.task.mode === 'text') {
-                  typeElementText(a.task.el);
-                } else {
-                  playSnapSound();
-                }
+                if (a.task.mode !== 'text') playSnapSound();
 
                 a.bbox.style.opacity = '0';
                 a.task = null;
@@ -568,13 +615,13 @@
           if (scrollFloatY < maxScroll) {
             let desiredSpeed = 65;
             if (builtCount >= total) {
-              desiredSpeed = 200; // everything built -> glide smoothly to bottom
-            } else if (leadTop < vh * 0.30 || unbuiltVisible >= 14) {
-              desiredSpeed = 24; // agents still busy in upper/dense area -> creep slowly, never stop
-            } else if (leadTop > vh * 0.65 || unbuiltVisible <= 3) {
-              desiredSpeed = 165; // current viewport nearly done -> speed up to next section
+              desiredSpeed = 190; // everything built -> glide smoothly to bottom
+            } else if (leadTop < vh * 0.26 || unbuiltVisible >= 10) {
+              desiredSpeed = 18; // agents busy across current screen -> creep slowly, never outrun
+            } else if (leadTop > vh * 0.62 || unbuiltVisible <= 2) {
+              desiredSpeed = 140; // current viewport nearly done -> speed up to next section
             } else {
-              desiredSpeed = 72; // balanced progress
+              desiredSpeed = 52; // balanced progress
             }
 
             currentScrollSpeed += (desiredSpeed - currentScrollSpeed) * Math.min(1, 3.2 * rawDt);
